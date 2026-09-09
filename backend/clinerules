@@ -1,0 +1,28 @@
+# Contexto do Projeto
+API Backend para um blog/rede social estilo Gossip Girl. 
+O sistema servirá clientes web e possui integração em tempo real e webhooks.
+
+# Tech Stack
+- C# com .NET 10 (ASP.NET Core Web API)
+- PostgreSQL (hospedado no Aiven)
+- Entity Framework Core (EF Core) como ORM
+- SignalR para atualizações em tempo real
+- Autenticação via JWT (futuramente com suporte a Google OAuth)
+
+# Regras de Negócio e Domínio
+- **Posts:** Contêm Título, Conteúdo, OwnerId (autor), CreatedAt, EditedAt e EditedBy (nulos por padrão).
+- **Controle de Acesso:** Apenas o autor (Owner) ou usuários com a role "Admin" podem editar ou deletar um Post. Toda edição deve preencher a data em `EditedAt` e o UUID em `EditedBy`.
+- **Interações:** Likes e Dislikes devem ser únicos por usuário por post (usar tabela intermediária `PostVotes` com chave composta `PostId` + `UserId`).
+- **Integração:** Toda vez que um post for criado com sucesso, o sistema deve disparar um POST request para o webhook do bot "Bostossauro" enviando o payload `{"message": "xoxo"}`.
+
+# Padrões de Código e Arquitetura
+- Utilize o padrão de Controllers para os endpoints REST.
+- Isole a lógica de banco de dados e regras de negócio em classes de Serviço (ex: `PostService`, `AuthService`) injetadas via Dependency Injection (DI).
+- Nunca retorne Entidades do EF Core diretamente nas controllers; utilize DTOs (Data Transfer Objects) para Request e Response.
+- Utilize Entity Framework Core Code-First Migrations.
+- Trabalhe sempre com `DateTime.UtcNow` para evitar problemas de compatibilidade de timezone com o PostgreSQL.
+- O hash de senhas deve usar o `PasswordHasher` nativo do ASP.NET Identity ou BCrypt.
+- Não crie código para o bot do WhatsApp, limite-se apenas a disparar o webhook via `HttpClient`.
+
+# Regras Operacionais e Workflow
+- Sempre que houver qualquer criação ou modificação nos modelos do EF Core ou no `DbContext`, alerte e instrua explicitamente o usuário a criar e aplicar uma nova migration (`dotnet ef migrations add` e `dotnet ef database update`).

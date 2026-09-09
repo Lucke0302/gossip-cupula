@@ -1,0 +1,22 @@
+@GossipCupula.Api_HostAddress = http://localhost:5195
+
+POST {{GossipCupula.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "dan.humphrey",
+  "email": "dan.humphrey@example.com",
+  "password": "senhaSegura123"
+}
+
+###
+
+POST {{GossipCupula.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "dan.humphrey@example.com",
+  "password": "senhaSegura123"
+}
+
+###

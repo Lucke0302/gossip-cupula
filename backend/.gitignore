@@ -1,0 +1,20 @@
+# Build results
+bin/
+obj/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Runtime / logs
+*.log
+logs/
+
+# Configurações locais e segredos (nunca versionar)
+# appsettings.Development.json
+# appsettings.Production.json
+.env
+secrets/
+
