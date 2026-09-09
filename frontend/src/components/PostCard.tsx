@@ -12,7 +12,7 @@ import type { Post } from '../types';
 export function PostCard({ post }: { post: Post }) {
   return (
     <Card as="article" padding="tight">
-      <h2 className="px-2 pb-[9px] pt-[5px] text-center font-serif text-[15px] leading-[1.3] text-[#222]">
+      <h2 className="px-2 pb-[9px] pt-[5px] text-center font-serif text-[17px] leading-[1.3] text-[#222]">
         <Link to={`/post/${post.id}`} className="text-[#222] no-underline hover:underline">
           {post.title}
         </Link>

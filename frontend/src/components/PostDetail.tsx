@@ -5,7 +5,7 @@ import type { PostDetail as PostDetailType } from '../types';
 export function PostDetail({ post }: { post: PostDetailType }) {
   return (
     <Card as="article" padding="tight">
-      <h1 className="px-2 pb-[9px] pt-[6px] text-center font-serif text-[16px] leading-[1.3] text-[#222]">
+      <h1 className="px-2 pb-[9px] pt-[6px] text-center font-serif text-[18px] leading-[1.3] text-[#222]">
         {post.title}
       </h1>
 
