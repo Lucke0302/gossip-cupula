@@ -121,7 +121,7 @@ export default function NewPostPage() {
     <Layout sections={SECTIONS}>
       <div className="flex flex-col gap-3.5">
         <Card padding="none" className="px-3.5 pb-3 pt-3.5">
-          <h1 className="pb-1 pt-0.5 text-center font-serif text-[16px] leading-[1.3] text-[#222]">
+          <h1 className="pb-1 pt-0.5 text-center font-serif text-[18px] leading-[1.3] text-[#222]">
             solta o babado
           </h1>
           <p className="px-3 pb-3.5 text-center font-body text-[11.5px] leading-[1.4] text-[#777]">

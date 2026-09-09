@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="bokeh min-h-screen px-4 py-16">
         <div className="mx-auto w-full max-w-[464px]">
           <Card padding="none" className="px-6 py-8 text-center">
-            <p className="font-serif text-[17px] text-[#222]">a fonte se enrolou</p>
+            <p className="font-serif text-[19px] text-[#222]">a fonte se enrolou</p>
             <p className="mt-[9px] font-body text-post text-[#555]">
               alguma coisa quebrou do lado de cá. recarrega a página — e se insistir, avisa quem
               cuida do servidor.

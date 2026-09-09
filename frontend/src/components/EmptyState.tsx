@@ -22,7 +22,7 @@ export function EmptyState({
       >
         {glyph}
       </span>
-      <p className="font-serif text-[17px] leading-[1.3] text-[#222]">{title}</p>
+      <p className="font-serif text-[19px] leading-[1.3] text-[#222]">{title}</p>
       <p className="mt-[9px] font-body text-post text-[#555]">{description}</p>
       {action ? <div className="mt-4">{action}</div> : null}
       {hint ? <p className="mt-3 font-body text-[11px] text-muted">{hint}</p> : null}

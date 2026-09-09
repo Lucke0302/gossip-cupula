@@ -5,7 +5,7 @@ import { messageFor } from '../lib/errors';
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
     <Card padding="none" className="px-6 py-7 text-center" as="section">
-      <p className="font-serif text-[17px] text-[#222]">a fonte não respondeu</p>
+      <p className="font-serif text-[19px] text-[#222]">a fonte não respondeu</p>
       <p role="alert" className="mt-[9px] font-body text-post text-[#555]">
         {messageFor(error)}
       </p>

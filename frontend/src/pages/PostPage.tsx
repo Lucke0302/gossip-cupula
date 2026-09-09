@@ -60,7 +60,7 @@ export default function PostPage() {
           <Card as="section" aria-labelledby="comentarios-titulo">
             <h2
               id="comentarios-titulo"
-              className="pb-3 pt-0.5 text-center font-serif text-[14px] leading-none text-[#222]"
+              className="pb-3 pt-0.5 text-center font-serif text-[16px] leading-none text-[#222]"
             >
               quem contou?
             </h2>
