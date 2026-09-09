@@ -26,7 +26,7 @@ export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page
     <div className="bokeh min-h-screen pb-16">
       <a
         href="#conteudo"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-card focus:px-3 focus:py-2 focus:font-body focus:text-[12px] focus:text-body"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-card focus:px-3 focus:py-2 focus:font-body focus:text-[13px] focus:text-body"
       >
         pular para o conteúdo
       </a>
@@ -63,7 +63,7 @@ export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page
         </>
       )}
 
-      <footer className="mx-auto mt-10 w-full max-w-[464px] px-4 text-center font-body text-[10.5px] leading-[1.6] text-[#8a8a80]">
+      <footer className="mx-auto mt-10 w-full max-w-[464px] px-4 text-center font-body text-[11px] leading-[1.6] text-[#8a8a80]">
         {isAuthenticated ? (
           <p>
             você entrou como <span className="text-muted-dim">{nickname}</span> — e isso não aparece

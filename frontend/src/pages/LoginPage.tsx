@@ -43,7 +43,7 @@ export default function LoginPage() {
       <div className="mx-auto w-full max-w-[352px]">
         <Card padding="roomy" as="section">
           <h1 className="text-center font-serif text-[17px] leading-[1.3] text-[#222]">entra, vai</h1>
-          <p className="mt-[5px] text-center font-body text-[11px] leading-[1.4] text-[#777]">
+          <p className="mt-[5px] text-center font-body text-[11.5px] leading-[1.4] text-[#777]">
             quem é da cúpula já sabe a senha.
           </p>
 
@@ -85,7 +85,7 @@ export default function LoginPage() {
               {isSubmitting ? 'entrando…' : 'entrar em silêncio'}
             </Button>
 
-            <p className="text-center font-body text-[11px] leading-[1.6] text-[#666]">
+            <p className="text-center font-body text-[11.5px] leading-[1.6] text-[#666]">
               esqueceu a senha? <span className="text-link">a gente finge que não sabe</span>
               <br />
               ainda de fora?{' '}
@@ -96,7 +96,7 @@ export default function LoginPage() {
           </form>
 
           {USE_MOCKS ? (
-            <p className="mt-4 rounded-field border border-dashed border-[#c3c3b6] px-3 py-2 text-center font-body text-[10px] leading-[1.5] text-[#8a8a80]">
+            <p className="mt-4 rounded-field border border-dashed border-[#c3c3b6] px-3 py-2 text-center font-body text-[10.5px] leading-[1.5] text-[#8a8a80]">
               modo mock ligado — entra com <strong>gossipgirl</strong> / <strong>xoxo123</strong> ou{' '}
               <strong>convidada</strong> / <strong>cupula123</strong>
             </p>

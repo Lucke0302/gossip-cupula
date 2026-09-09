@@ -29,14 +29,14 @@ export function PostDetail({ post }: { post: PostDetailType }) {
       ))}
 
       <footer className="mt-[10px] flex items-center justify-between gap-3 border-t border-hairline px-[3px] pb-[2px] pt-[10px]">
-        <p className="font-body text-[11px] text-muted">
+        <p className="font-body text-[11.5px] text-muted">
           <time dateTime={post.publishedAt} title={fuzzyTimeLong(post.publishedAt)}>
             {fuzzyTime(post.publishedAt)}
           </time>
           {' · '}
           {plural(post.commentCount, 'comentário', 'comentários')}
         </p>
-        <span aria-hidden="true" className="font-body text-[10px] tracking-[.04em] text-[#7aa8d8]">
+        <span aria-hidden="true" className="font-body text-[10.5px] tracking-[.04em] text-[#7aa8d8]">
           xoxo, cúpula
         </span>
       </footer>

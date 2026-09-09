@@ -93,11 +93,11 @@ export default function LinksPage() {
                         href={item.url}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="font-body text-[12px] text-link"
+                        className="font-body text-[13px] text-link"
                       >
                         {item.label}
                       </a>
-                      <p className="mt-1 font-body text-[11px] leading-[1.4] text-[#666]">
+                      <p className="mt-1 font-body text-[11.5px] leading-[1.4] text-[#666]">
                         {item.note}
                       </p>
                     </li>

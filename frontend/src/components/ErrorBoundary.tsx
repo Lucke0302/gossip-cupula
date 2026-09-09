@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
               cuida do servidor.
             </p>
             {import.meta.env.DEV ? (
-              <pre className="mt-3 overflow-x-auto rounded bg-[#f6f6ef] p-2 text-left font-mono text-[10px] text-[#8b3a2f]">
+              <pre className="mt-3 overflow-x-auto rounded bg-[#f6f6ef] p-2 text-left font-mono text-[10.5px] text-[#8b3a2f]">
                 {error.message}
               </pre>
             ) : null}

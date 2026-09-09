@@ -71,10 +71,10 @@ export function Sidebar({
           )}
 
           {section.description ? (
-            <p className="mt-[5px] font-body text-[11.5px] leading-[1.35] text-muted-dark">
+            <p className="mt-[5px] font-body text-[12px] leading-[1.35] text-muted-dark">
               {section.description}{' '}
               {section.to && section.cta ? (
-                <Link to={section.to} className="text-[11px] text-welcome">
+                <Link to={section.to} className="text-[11.5px] text-welcome">
                   {section.cta}
                 </Link>
               ) : null}

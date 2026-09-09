@@ -9,7 +9,7 @@ import type { Comment } from '../types';
 export function CommentList({ comments }: { comments: Comment[] }) {
   if (comments.length === 0) {
     return (
-      <p className="py-2 text-center font-body text-[11.5px] text-[#8a8a80]">
+      <p className="py-2 text-center font-body text-[12px] text-[#8a8a80]">
         ninguém abriu a boca ainda. seja a primeira.
       </p>
     );
@@ -27,22 +27,22 @@ export function CommentList({ comments }: { comments: Comment[] }) {
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex rounded-full border border-[#ddd] px-2 py-[2px] font-body text-[9px] leading-[1.6] tracking-[.06em] text-[#777]">
+              <span className="inline-flex rounded-full border border-[#ddd] px-2 py-[2px] font-body text-[9.5px] leading-[1.6] tracking-[.06em] text-[#777]">
                 ANÔNIMO
               </span>
               {pending ? (
-                <span className="font-body text-[10px] text-muted">enviando…</span>
+                <span className="font-body text-[10.5px] text-muted">enviando…</span>
               ) : (
                 <time
                   dateTime={comment.publishedAt}
                   title={fuzzyTimeLong(comment.publishedAt)}
-                  className="font-body text-[10px] text-[#a5a59b]"
+                  className="font-body text-[10.5px] text-[#a5a59b]"
                 >
                   {fuzzyTime(comment.publishedAt)}
                 </time>
               )}
             </div>
-            <p className="mt-1.5 font-body text-[12px] leading-[1.35] text-body">{comment.text}</p>
+            <p className="mt-1.5 font-body text-[13px] leading-[1.35] text-body">{comment.text}</p>
           </li>
         );
       })}

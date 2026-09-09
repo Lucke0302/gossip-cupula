@@ -64,10 +64,10 @@ export default function PhotosPage() {
                   className="block w-full rounded-sm"
                 />
                 <figcaption className="flex items-baseline justify-between gap-2 px-[3px] pb-0.5 pt-2">
-                  <span className="font-body text-[11px] leading-[1.35] text-body">
+                  <span className="font-body text-[11.5px] leading-[1.35] text-body">
                     {photo.caption}
                   </span>
-                  <time dateTime={photo.publishedAt} className="flex-none font-body text-[10px] text-muted">
+                  <time dateTime={photo.publishedAt} className="flex-none font-body text-[10.5px] text-muted">
                     {fuzzyTime(photo.publishedAt)}
                   </time>
                 </figcaption>

@@ -33,9 +33,9 @@ export default {
       },
       fontSize: {
         // corpo denso de 2008
-        post: ['12.5px', '1.35'],
-        meta: ['11px', '1.35'],
-        micro: ['10px', '1.4'],
+        post: ['13.5px', '1.4'],
+        meta: ['11.5px', '1.35'],
+        micro: ['10.5px', '1.4'],
       },
       spacing: { 1.5: '6px', 4.5: '18px', 13: '52px' },
       borderRadius: { card: '12px', field: '6px' },

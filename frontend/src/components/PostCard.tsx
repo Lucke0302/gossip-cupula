@@ -33,7 +33,7 @@ export function PostCard({ post }: { post: Post }) {
       <p className="px-[3px] pt-[10px] font-body text-post text-body">{post.excerpt}</p>
 
       <div className="flex items-center justify-between gap-3 px-[3px] pb-[2px] pt-[9px]">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-body text-[11px]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-body text-[11.5px]">
           <Link to={`/post/${post.id}`} className="text-link">
             {plural(post.commentCount, 'comentário', 'comentários')}
           </Link>
@@ -41,7 +41,7 @@ export function PostCard({ post }: { post: Post }) {
             {fuzzyTime(post.publishedAt)}
           </time>
         </div>
-        <span aria-hidden="true" className="font-body text-[10px] tracking-[.04em] text-[#7aa8d8]">
+        <span aria-hidden="true" className="font-body text-[10.5px] tracking-[.04em] text-[#7aa8d8]">
           xoxo, cúpula
         </span>
       </div>

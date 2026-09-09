@@ -24,7 +24,7 @@ export function Toaster() {
           key={toast.id}
           className={`pointer-events-auto flex w-full max-w-[380px] items-start gap-3 rounded-field border-l-4 bg-card px-3 py-2.5 shadow-paper ${TONE[toast.tone]}`}
         >
-          <p className="flex-1 font-body text-[11.5px] leading-[1.4] text-body">{toast.message}</p>
+          <p className="flex-1 font-body text-[12px] leading-[1.4] text-body">{toast.message}</p>
           <button
             type="button"
             onClick={() => dismiss(toast.id)}

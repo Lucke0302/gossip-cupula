@@ -124,7 +124,7 @@ export default function NewPostPage() {
           <h1 className="pb-1 pt-0.5 text-center font-serif text-[16px] leading-[1.3] text-[#222]">
             solta o babado
           </h1>
-          <p className="px-3 pb-3.5 text-center font-body text-[11px] leading-[1.4] text-[#777]">
+          <p className="px-3 pb-3.5 text-center font-body text-[11.5px] leading-[1.4] text-[#777]">
             sem nome, sem foto, sem @. só a história.
           </p>
 
@@ -151,7 +151,7 @@ export default function NewPostPage() {
                 aria-describedby="content-hint content-error"
                 {...register('content')}
               />
-              <div className="mt-[5px] flex justify-between gap-3 font-body text-[10px] text-muted">
+              <div className="mt-[5px] flex justify-between gap-3 font-body text-[10.5px] text-muted">
                 <span id="content-hint">hora, lugar e um detalhe que só quem estava lá sabe</span>
                 <span aria-live="polite">{content.length} / 1200</span>
               </div>
@@ -190,24 +190,24 @@ export default function NewPostPage() {
                         setValue('imageDataUrl', null, { shouldDirty: true });
                         if (fileInput.current) fileInput.current.value = '';
                       }}
-                      className="font-body text-[11px] text-link underline"
+                      className="font-body text-[11.5px] text-link underline"
                     >
                       tirar a foto
                     </button>
                   </>
                 ) : (
                   <>
-                    <span className="font-mono text-[10px] tracking-[.1em] text-[#8b8b7e]">
+                    <span className="font-mono text-[10.5px] tracking-[.1em] text-[#8b8b7e]">
                       ARRASTE A FOTO AQUI
                     </span>
                     <button
                       type="button"
                       onClick={() => fileInput.current?.click()}
-                      className="font-body text-[11px] text-link underline"
+                      className="font-body text-[11.5px] text-link underline"
                     >
                       ou escolha do rolo
                     </button>
-                    <span className="font-body text-[9.5px] text-muted">
+                    <span className="font-body text-[10px] text-muted">
                       metadados removidos automaticamente
                     </span>
                   </>
@@ -242,7 +242,7 @@ export default function NewPostPage() {
           </form>
         </Card>
 
-        <p className="text-center font-body text-[10.5px] leading-[1.4] text-[#b9b9ae]">
+        <p className="text-center font-body text-[11px] leading-[1.4] text-[#b9b9ae]">
           o horário do post é arredondado pra hora cheia — pra ninguém te descobrir pela pressa.
         </p>
       </div>

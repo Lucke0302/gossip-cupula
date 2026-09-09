@@ -15,7 +15,7 @@ export function PostCardSkeleton({ imageHeight = 250, dim = false }: { imageHeig
         <div className="h-[9px] w-[74%] rounded-[3px] bg-[#ededE4]" />
       </div>
       <div className="flex justify-end pt-[11px]">
-        <span className="animate-pulse2008 font-body text-[10px] tracking-[.04em] text-[#c2c2b6]">
+        <span className="animate-pulse2008 font-body text-[10.5px] tracking-[.04em] text-[#c2c2b6]">
           xoxo, cúpula
         </span>
       </div>
@@ -29,7 +29,7 @@ export function FeedSkeleton() {
       <span className="sr-only">apurando o babado…</span>
       <PostCardSkeleton imageHeight={250} />
       <PostCardSkeleton imageHeight={150} dim />
-      <p aria-hidden="true" className="animate-pulse2008 text-center font-body text-[11px] text-[#c9c9be]">
+      <p aria-hidden="true" className="animate-pulse2008 text-center font-body text-[11.5px] text-[#c9c9be]">
         apurando o babado...
       </p>
     </div>

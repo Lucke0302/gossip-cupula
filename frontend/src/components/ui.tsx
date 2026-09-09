@@ -3,12 +3,12 @@ import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type R
 /* Primitivas de formulario e botao, todas com os tokens do design. */
 
 const FIELD_BASE =
-  'w-full rounded-field border bg-field px-[10px] py-[9px] font-body text-[12.5px] leading-[1.35] text-body shadow-sunken placeholder:text-[#9d9d92] focus:border-welcome focus:bg-white focus:shadow-focusring focus:outline-none disabled:opacity-60';
+  'w-full rounded-field border bg-field px-[10px] py-[9px] font-body text-[13.5px] leading-[1.35] text-body shadow-sunken placeholder:text-[#9d9d92] focus:border-welcome focus:bg-white focus:shadow-focusring focus:outline-none disabled:opacity-60';
 
 export const Label = ({ htmlFor, children }: { htmlFor: string; children: ReactNode }) => (
   <label
     htmlFor={htmlFor}
-    className="mb-[5px] block font-body text-[10px] uppercase leading-none tracking-[.06em] text-[#666]"
+    className="mb-[5px] block font-body text-[10.5px] uppercase leading-none tracking-[.06em] text-[#666]"
   >
     {children}
   </label>
@@ -16,7 +16,7 @@ export const Label = ({ htmlFor, children }: { htmlFor: string; children: ReactN
 
 export const FieldError = ({ id, children }: { id: string; children?: ReactNode }) =>
   children ? (
-    <p id={id} role="alert" className="mt-1.5 font-body text-[10.5px] leading-[1.4] text-[#c0392b]">
+    <p id={id} role="alert" className="mt-1.5 font-body text-[11px] leading-[1.4] text-[#c0392b]">
       {children}
     </p>
   ) : null;
@@ -88,7 +88,7 @@ export const Checkbox = forwardRef<
       className="mt-[2px] h-3 w-3 flex-none rounded-[2px] border border-[#b9b9ac] accent-fofocas"
       {...props}
     />
-    <label htmlFor={id} className="font-body text-[10.5px] leading-[1.4] text-[#555]">
+    <label htmlFor={id} className="font-body text-[11px] leading-[1.4] text-[#555]">
       {label}
     </label>
   </div>

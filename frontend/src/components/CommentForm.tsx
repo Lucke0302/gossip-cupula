@@ -40,7 +40,7 @@ export function CommentForm({ postId }: { postId: string }) {
 
   return (
     <form onSubmit={onSubmit} className="mt-3.5">
-      <label htmlFor="comment-text" className="mb-1.5 block font-body text-[11px] text-[#666]">
+      <label htmlFor="comment-text" className="mb-1.5 block font-body text-[11.5px] text-[#666]">
         manda o seu, ninguém vai saber:
       </label>
       <TextArea
@@ -54,7 +54,7 @@ export function CommentForm({ postId }: { postId: string }) {
       <FieldError id="comment-text-error">{errors.text?.message}</FieldError>
 
       <div className="mt-[9px] flex items-center justify-between gap-3">
-        <p className="font-body text-[10px] leading-[1.3] text-muted">sem nome, sem foto, sem @</p>
+        <p className="font-body text-[10.5px] leading-[1.3] text-muted">sem nome, sem foto, sem @</p>
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'soltando…' : 'soltar'}
         </Button>

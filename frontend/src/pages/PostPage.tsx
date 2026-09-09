@@ -66,13 +66,13 @@ export default function PostPage() {
             </h2>
 
             {comments.isPending ? (
-              <p className="animate-pulse2008 py-2 text-center font-body text-[11px] text-[#a5a59b]">
+              <p className="animate-pulse2008 py-2 text-center font-body text-[11.5px] text-[#a5a59b]">
                 conferindo com a fonte…
               </p>
             ) : null}
 
             {comments.isError ? (
-              <p role="alert" className="py-2 text-center font-body text-[11px] text-[#c0392b]">
+              <p role="alert" className="py-2 text-center font-body text-[11.5px] text-[#c0392b]">
                 não deu pra carregar os comentários.{' '}
                 <button
                   type="button"
@@ -91,7 +91,7 @@ export default function PostPage() {
         ) : null}
 
         <p className="text-center">
-          <Link to="/" className="font-body text-[11px] text-welcome">
+          <Link to="/" className="font-body text-[11.5px] text-welcome">
             ← voltar pro feed
           </Link>
         </p>

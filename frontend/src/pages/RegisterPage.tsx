@@ -42,7 +42,7 @@ export default function RegisterPage() {
           <h1 className="text-center font-serif text-[17px] leading-[1.3] text-[#222]">
             pede convite
           </h1>
-          <p className="mt-[5px] text-center font-body text-[11px] leading-[1.4] text-[#777]">
+          <p className="mt-[5px] text-center font-body text-[11.5px] leading-[1.4] text-[#777]">
             a gente não pede seu nome. só o babado de entrada.
           </p>
 
@@ -101,7 +101,7 @@ export default function RegisterPage() {
               {isSubmitting ? 'pedindo…' : 'quero entrar'}
             </Button>
 
-            <p className="text-center font-body text-[11px] leading-[1.6] text-[#666]">
+            <p className="text-center font-body text-[11.5px] leading-[1.6] text-[#666]">
               já é de casa?{' '}
               <Link to="/login" className="text-link">
                 entra por aqui

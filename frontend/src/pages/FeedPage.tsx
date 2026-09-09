@@ -64,7 +64,7 @@ export default function FeedPage() {
               </Button>
             </div>
           ) : (
-            <p className="text-center font-body text-[10.5px] text-[#8a8a80]">
+            <p className="text-center font-body text-[11px] text-[#8a8a80]">
               acabou o babado por enquanto. volta mais tarde.
             </p>
           )}
