@@ -39,7 +39,7 @@ export function AvatarNav({ orientation = 'vertical' }: { orientation?: 'vertica
                 }`}
               />
               <span
-                className={`font-display text-[14px] font-light sm:text-[15px] ${
+                className={`font-display text-[15px] font-light ${
                   isActive ? 'text-wordmark' : 'text-muted-dim'
                 }`}
               >

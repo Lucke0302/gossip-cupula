@@ -60,12 +60,12 @@ export function Sidebar({
           {section.to ? (
             <Link
               to={section.to}
-              className={`font-display text-[22px] font-light no-underline sm:text-[28px] ${section.color}`}
+              className={`font-display text-[26px] font-light no-underline sm:text-[28px] ${section.color}`}
             >
               {section.label}
             </Link>
           ) : (
-            <p className={`font-display text-[22px] font-light sm:text-[28px] ${section.color}`}>
+            <p className={`font-display text-[26px] font-light sm:text-[28px] ${section.color}`}>
               {section.label}
             </p>
           )}
