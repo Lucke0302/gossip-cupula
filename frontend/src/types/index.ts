@@ -1,0 +1,164 @@
+import { z } from 'zod';
+
+/* ------------------------------------------------------------------ *
+ * REGRA CENTRAL: ANONIMATO
+ *
+ * Post e Comment NAO possuem authorId, authorName, ownerUsername,
+ * avatar, email nem nada derivado do autor. Isso nao e' um detalhe de
+ * UI: e' o formato do dado. Os schemas abaixo sao `.strict()`, entao se
+ * o backend mandar QUALQUER campo a mais a validacao explode e o erro
+ * aparece — que e' exatamente o que queremos. Um campo de autor que
+ * vazou nunca vai chegar calado ate' a tela.
+ *
+ * A autoria so' existe no payload de criacao (POST), autenticada via
+ * token. A resposta de leitura volta sem ela.
+ * ------------------------------------------------------------------ */
+
+/** Id opaco. Nunca sequencial — id sequencial denuncia ordem de criacao. */
+export const opaqueIdSchema = z
+  .string()
+  .min(8)
+  .regex(/^[A-Za-z0-9_-]+$/, 'id deve ser opaco (sem separadores)');
+
+/**
+ * Carimbo de tempo grosseiro. O backend arredonda para a HORA cheia em
+ * UTC antes de responder. Precisao de segundos denunciaria quem postou
+ * ("foi quem saiu da mesa 23h47").
+ */
+export const coarseTimestampSchema = z
+  .string()
+  .datetime({ offset: true })
+  .refine((value) => {
+    const d = new Date(value);
+    return d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+  }, 'timestamp precisa vir arredondado para a hora cheia (anonimato)');
+
+export const postSchema = z
+  .object({
+    id: opaqueIdSchema,
+    title: z.string().min(1).max(200),
+    excerpt: z.string(),
+    imageUrl: z.string().url().nullable(),
+    imageAlt: z.string().nullable(),
+    commentCount: z.number().int().nonnegative(),
+    publishedAt: coarseTimestampSchema,
+  })
+  .strict();
+
+export const postDetailSchema = postSchema
+  .extend({
+    /** Paragrafos do corpo. Array para nao depender de HTML do servidor. */
+    body: z.array(z.string().min(1)).min(1),
+  })
+  .strict();
+
+export const commentSchema = z
+  .object({
+    id: opaqueIdSchema,
+    text: z.string().min(1).max(500),
+    publishedAt: coarseTimestampSchema,
+  })
+  .strict();
+
+export const pageSchema = <T extends z.ZodTypeAny>(item: T) =>
+  z
+    .object({
+      items: z.array(item),
+      /** Cursor opaco. Nada de `?page=2` — offset expoe ordem e volume. */
+      nextCursor: z.string().nullable(),
+    })
+    .strict();
+
+export const photoSchema = z
+  .object({
+    id: opaqueIdSchema,
+    url: z.string().url(),
+    alt: z.string().min(1),
+    caption: z.string(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    publishedAt: coarseTimestampSchema,
+  })
+  .strict();
+
+export const linkSchema = z
+  .object({
+    id: opaqueIdSchema,
+    label: z.string().min(1),
+    url: z.string().url(),
+    note: z.string(),
+    section: z.enum(['welcome', 'fofocas', 'fotos', 'eventos', 'links']),
+  })
+  .strict();
+
+/**
+ * Sessao. `nickname` e' o apelido de login — ele NUNCA e' anexado a um
+ * post ou comentario, so' existe para o proprio usuario saber que esta'
+ * logado. `role` libera as acoes de admin do backend.
+ */
+export const sessionSchema = z
+  .object({
+    nickname: z.string().min(1).max(50),
+    role: z.enum(['user', 'admin']),
+    /** Segundos ate' o access token expirar. Guardado so' em memoria. */
+    expiresIn: z.number().int().positive(),
+    accessToken: z.string().min(10),
+  })
+  .strict();
+
+export type Post = z.infer<typeof postSchema>;
+export type PostDetail = z.infer<typeof postDetailSchema>;
+export type Comment = z.infer<typeof commentSchema>;
+export type Photo = z.infer<typeof photoSchema>;
+export type LinkItem = z.infer<typeof linkSchema>;
+export type Session = z.infer<typeof sessionSchema>;
+export type Page<T> = { items: T[]; nextCursor: string | null };
+
+/* ---------------------------- payloads de escrita ---------------------------- */
+/* Aqui a autoria existe — mas implicitamente, via token. Nenhum campo de
+   identidade viaja no corpo. */
+
+export const createPostSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(4, 'manchete curta demais pra ser lembrada amanhã')
+    .max(200, 'manchete até 200 caracteres'),
+  content: z
+    .string()
+    .trim()
+    .min(20, 'conta mais: hora, lugar e um detalhe que só quem estava lá sabe')
+    .max(1200, 'o babado cabe em 1200 caracteres'),
+  imageDataUrl: z.string().nullable().default(null),
+});
+
+export const createCommentSchema = z.object({
+  text: z
+    .string()
+    .trim()
+    .min(2, 'escreve alguma coisa')
+    .max(500, 'comentário até 500 caracteres'),
+});
+
+export const loginSchema = z.object({
+  nickname: z.string().trim().min(2, 'apelido obrigatório').max(50),
+  password: z.string().min(6, 'senha de no mínimo 6 caracteres').max(100),
+  remember: z.boolean().default(false),
+});
+
+export const registerSchema = z.object({
+  nickname: z.string().trim().min(2, 'apelido obrigatório').max(50),
+  inviteCode: z
+    .string()
+    .trim()
+    .regex(/^[A-Z]{2}-\d{4}$/, 'formato do convite: XX-0000'),
+  password: z.string().min(6, 'senha de no mínimo 6 caracteres').max(100),
+  oath: z.literal(true, {
+    errorMap: () => ({ message: 'sem o juramento não tem cúpula' }),
+  }),
+});
+
+export type CreatePostInput = z.infer<typeof createPostSchema>;
+export type CreateCommentInput = z.infer<typeof createCommentSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
