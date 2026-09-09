@@ -45,10 +45,10 @@ export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page
             <AvatarNav orientation="horizontal" />
           </div>
 
-          <div className="mx-auto flex w-full max-w-[980px] items-start justify-center gap-10 px-4 pt-4 sm:pt-6">
+          <div className="mx-auto flex w-full max-w-[1024px] items-start justify-center gap-10 px-4 pt-4 sm:pt-6">
             <Sidebar sections={sections} className="hidden w-[200px] flex-none pt-1 lg:flex" />
 
-            <main id="conteudo" className="w-full max-w-[420px] flex-none">
+            <main id="conteudo" className="w-full max-w-[464px] flex-none">
               {children}
             </main>
 
@@ -57,13 +57,13 @@ export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page
             </div>
           </div>
 
-          <div className="mx-auto mt-8 w-full max-w-[420px] border-t border-wordmark/10 px-4 pt-7 lg:hidden">
+          <div className="mx-auto mt-8 w-full max-w-[464px] border-t border-wordmark/10 px-4 pt-7 lg:hidden">
             <Sidebar sections={sections} />
           </div>
         </>
       )}
 
-      <footer className="mx-auto mt-10 w-full max-w-[420px] px-4 text-center font-body text-[10.5px] leading-[1.6] text-[#8a8a80]">
+      <footer className="mx-auto mt-10 w-full max-w-[464px] px-4 text-center font-body text-[10.5px] leading-[1.6] text-[#8a8a80]">
         {isAuthenticated ? (
           <p>
             você entrou como <span className="text-muted-dim">{nickname}</span> — e isso não aparece

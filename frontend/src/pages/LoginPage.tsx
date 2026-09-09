@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   return (
     <Layout bare wordmark="page">
-      <div className="mx-auto w-full max-w-[320px]">
+      <div className="mx-auto w-full max-w-[352px]">
         <Card padding="roomy" as="section">
           <h1 className="text-center font-serif text-[17px] leading-[1.3] text-[#222]">entra, vai</h1>
           <p className="mt-[5px] text-center font-body text-[11px] leading-[1.4] text-[#777]">

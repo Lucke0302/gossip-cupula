@@ -6,7 +6,7 @@ import { Button } from '../components/ui';
 export default function NotFoundPage() {
   return (
     <Layout bare wordmark="page">
-      <div className="mx-auto w-full max-w-[420px]">
+      <div className="mx-auto w-full max-w-[464px]">
         <EmptyState
           glyph="404"
           title="essa página não existe"

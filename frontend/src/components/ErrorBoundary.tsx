@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="bokeh min-h-screen px-4 py-16">
-        <div className="mx-auto w-full max-w-[420px]">
+        <div className="mx-auto w-full max-w-[464px]">
           <Card padding="none" className="px-6 py-8 text-center">
             <p className="font-serif text-[17px] text-[#222]">a fonte se enrolou</p>
             <p className="mt-[9px] font-body text-post text-[#555]">
