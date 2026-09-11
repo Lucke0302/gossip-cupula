@@ -20,7 +20,7 @@ export default function RegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { nickname: '', inviteCode: '', password: '', oath: undefined },
+    defaultValues: { nickname: '', email: '', password: '', oath: undefined },
   });
 
   if (status === 'authenticated') return <Navigate to="/" replace />;
@@ -61,16 +61,17 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <Label htmlFor="inviteCode">código do convite</Label>
+              <Label htmlFor="email">e-mail</Label>
               <TextInput
-                id="inviteCode"
-                placeholder="XX-0000"
-                className="font-mono tracking-[.14em]"
-                invalid={Boolean(errors.inviteCode)}
-                aria-describedby={errors.inviteCode ? 'invite-error' : undefined}
-                {...register('inviteCode')}
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="pra onde vai a confirmação"
+                invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+                {...register('email')}
               />
-              <FieldError id="invite-error">{errors.inviteCode?.message}</FieldError>
+              <FieldError id="email-error">{errors.email?.message}</FieldError>
             </div>
 
             <div>

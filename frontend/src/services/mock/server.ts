@@ -18,52 +18,33 @@ import {
  * rede: mesma URL, mesmo verbo, mesmo status, mesmo corpo. Trocar
  * VITE_USE_MOCKS=false nao muda uma linha de codigo de tela.
  *
- * O "cookie httpOnly" de refresh e' simulado por sessionStorage: e' a
- * unica peca que um mock de navegador nao consegue reproduzir de
- * verdade, porque cookie httpOnly, por definicao, o JS nao ve.
+ * A sessao e' simulada por sessionStorage. No app de verdade quem manda
+ * e' um cookie HttpOnly escrito pelo proxy, que o JS nao consegue ler —
+ * e' a unica peca que um mock de navegador nao reproduz fielmente.
+ * Do ponto de vista das telas o contrato e' identico: ninguem ve token.
  * ------------------------------------------------------------------ */
 
 const LATENCY_MS = 420;
-const ACCESS_TTL_S = 15 * 60;
-const REFRESH_COOKIE_KEY = 'mock:refresh';
+const SESSION_KEY = 'mock:session';
 
 type MockSession = { nickname: string; role: 'user' | 'admin' };
 
-/** Access tokens emitidos nesta aba, com a hora de expirar. */
-const issued = new Map<string, { session: MockSession; expiresAt: number }>();
-
-function readRefreshCookie(): MockSession | null {
+function readSession(): MockSession | null {
   try {
-    const raw = sessionStorage.getItem(REFRESH_COOKIE_KEY);
+    const raw = sessionStorage.getItem(SESSION_KEY);
     return raw ? (JSON.parse(raw) as MockSession) : null;
   } catch {
     return null;
   }
 }
 
-function writeRefreshCookie(session: MockSession | null): void {
+function writeSession(session: MockSession | null): void {
   try {
-    if (session) sessionStorage.setItem(REFRESH_COOKIE_KEY, JSON.stringify(session));
-    else sessionStorage.removeItem(REFRESH_COOKIE_KEY);
+    if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    else sessionStorage.removeItem(SESSION_KEY);
   } catch {
-    /* modo privado / storage bloqueado: a sessao vira so-memoria */
+    /* modo privado / storage bloqueado: a sessao nao persiste */
   }
-}
-
-function issueToken(session: MockSession): string {
-  const token = `mock.${opaqueId()}.${opaqueId()}`;
-  issued.set(token, { session, expiresAt: Date.now() + ACCESS_TTL_S * 1000 });
-  return token;
-}
-
-function sessionFrom(init: RequestInit): MockSession | null {
-  const headers = new Headers(init.headers);
-  const auth = headers.get('Authorization');
-  if (!auth?.startsWith('Bearer ')) return null;
-  const entry = issued.get(auth.slice(7));
-  if (!entry) return null;
-  if (entry.expiresAt < Date.now()) return null;
-  return entry.session;
 }
 
 /* ------------------------------ helpers ------------------------------ */
@@ -134,81 +115,60 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   {
     method: 'POST',
     pattern: /^\/auth\/login$/,
-    handler: (init) => {
-      const { nickname, password } = parseBody<{ nickname?: string; password?: string }>(init);
+    handler: (_init) => {
+      // A API real aceita usuario OU e-mail no mesmo campo.
+      const { identifier, password } = parseBody<{ identifier?: string; password?: string }>(_init);
+      const clean = identifier?.trim().toLowerCase() ?? '';
       const account = accounts.find(
-        (a) => a.nickname === nickname?.trim().toLowerCase() && a.password === password,
+        (a) => (a.nickname === clean || a.email === clean) && a.password === password,
       );
-      if (!account) return fail(401, 'apelido ou senha que não abrem essa porta');
+      if (!account) return fail(401, 'usuário/e-mail ou senha que não abrem essa porta');
 
       const session: MockSession = { nickname: account.nickname, role: account.role };
-      writeRefreshCookie(session); // = Set-Cookie: refresh=...; HttpOnly; Secure
-      return json({
-        nickname: session.nickname,
-        role: session.role,
-        expiresIn: ACCESS_TTL_S,
-        accessToken: issueToken(session),
-      });
+      // No app de verdade e' aqui que o proxy manda Set-Cookie HttpOnly.
+      writeSession(session);
+      return json(session);
     },
   },
   {
     method: 'POST',
     pattern: /^\/auth\/register$/,
-    handler: (init) => {
-      const { nickname, inviteCode } = parseBody<{ nickname?: string; inviteCode?: string }>(init);
-      const clean = nickname?.trim().toLowerCase() ?? '';
+    handler: (_init) => {
+      const { username, email } = parseBody<{ username?: string; email?: string }>(_init);
+      const clean = username?.trim().toLowerCase() ?? '';
       if (accounts.some((a) => a.nickname === clean)) {
         return fail(409, 'esse apelido já anda por aí');
       }
-      if (!/^[A-Z]{2}-\d{4}$/.test(inviteCode ?? '')) {
-        return fail(400, 'convite inválido. tenta com quem te chamou.');
-      }
+      if (!email?.includes('@')) return fail(400, 'e-mail inválido');
+
       const session: MockSession = { nickname: clean, role: 'user' };
-      writeRefreshCookie(session);
-      return json(
-        {
-          nickname: session.nickname,
-          role: session.role,
-          expiresIn: ACCESS_TTL_S,
-          accessToken: issueToken(session),
-        },
-        201,
-      );
-    },
-  },
-  {
-    method: 'POST',
-    pattern: /^\/auth\/refresh$/,
-    handler: () => {
-      const session = readRefreshCookie();
-      if (!session) return fail(401, 'refresh token inválido');
-      return json({ accessToken: issueToken(session), expiresIn: ACCESS_TTL_S });
+      writeSession(session);
+      return json(session, 201);
     },
   },
   {
     method: 'POST',
     pattern: /^\/auth\/logout$/,
     handler: () => {
-      writeRefreshCookie(null);
-      issued.clear();
+      writeSession(null);
       return new Response(null, { status: 204 });
     },
   },
   {
     method: 'GET',
     pattern: /^\/auth\/session$/,
-    handler: (init) => {
-      const session = sessionFrom(init);
+    handler: () => {
+      const session = readSession();
       if (!session) return unauthorized();
-      return json({ nickname: session.nickname, role: session.role });
+      return json(session);
     },
   },
 
   {
     method: 'GET',
     pattern: /^\/posts$/,
-    handler: (init, _params, url) => {
-      if (!sessionFrom(init)) return unauthorized();
+    handler: (_init, _params, url) => {
+      if (!readSession()) return unauthorized();
 
       const limit = Math.min(Number(url.searchParams.get('limit') ?? 4) || 4, 20);
       const cursor = url.searchParams.get('cursor');
@@ -228,8 +188,8 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   {
     method: 'GET',
     pattern: /^\/posts\/([^/]+)$/,
-    handler: (init, params) => {
-      if (!sessionFrom(init)) return unauthorized();
+    handler: (_init, params) => {
+      if (!readSession()) return unauthorized();
       const post = posts.find((p) => p.id === params.id);
       if (!post) return fail(404, 'esse babado não existe (ou já sumiu)');
       return json(toPostDetail(post));
@@ -238,15 +198,15 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   {
     method: 'POST',
     pattern: /^\/posts$/,
-    handler: (init) => {
-      const session = sessionFrom(init);
+    handler: (_init) => {
+      const session = readSession();
       if (!session) return unauthorized();
 
       const { title, content, imageDataUrl } = parseBody<{
         title?: string;
         content?: string;
         imageDataUrl?: string | null;
-      }>(init);
+      }>(_init);
 
       if (!title?.trim() || !content?.trim()) {
         return fail(400, 'manchete e babado são obrigatórios');
@@ -276,8 +236,8 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   {
     method: 'GET',
     pattern: /^\/posts\/([^/]+)\/comments$/,
-    handler: (init, params) => {
-      if (!sessionFrom(init)) return unauthorized();
+    handler: (_init, params) => {
+      if (!readSession()) return unauthorized();
       if (!posts.some((p) => p.id === params.id)) {
         return fail(404, 'esse babado não existe (ou já sumiu)');
       }
@@ -291,14 +251,14 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   {
     method: 'POST',
     pattern: /^\/posts\/([^/]+)\/comments$/,
-    handler: (init, params) => {
-      const session = sessionFrom(init);
+    handler: (_init, params) => {
+      const session = readSession();
       if (!session) return unauthorized();
       if (!posts.some((p) => p.id === params.id)) {
         return fail(404, 'esse babado não existe (ou já sumiu)');
       }
 
-      const { text } = parseBody<{ text?: string }>(init);
+      const { text } = parseBody<{ text?: string }>(_init);
       if (!text?.trim()) return fail(400, 'escreve alguma coisa');
 
       // Uma em cada oito falha, pra dar pra ver o rollback otimista rodando.
@@ -319,16 +279,16 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   {
     method: 'GET',
     pattern: /^\/photos$/,
-    handler: (init) => {
-      if (!sessionFrom(init)) return unauthorized();
+    handler: (_init) => {
+      if (!readSession()) return unauthorized();
       return json({ items: photos, nextCursor: null });
     },
   },
   {
     method: 'GET',
     pattern: /^\/links$/,
-    handler: (init) => {
-      if (!sessionFrom(init)) return unauthorized();
+    handler: (_init) => {
+      if (!readSession()) return unauthorized();
       return json({ items: links, nextCursor: null });
     },
   },

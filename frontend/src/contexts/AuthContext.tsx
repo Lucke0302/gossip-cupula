@@ -4,7 +4,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -16,13 +15,15 @@ import type { LoginInput, RegisterInput, Session } from '../types';
 /* ------------------------------------------------------------------ *
  * Sessao.
  *
- * O access token vive AQUI, num ref — memoria pura. Nunca localStorage,
- * nunca sessionStorage, nunca cookie legivel por JS. Se a aba fechar,
- * ele some; quem devolve a sessao no boot e' o refresh token, que mora
- * num cookie httpOnly + Secure e o JS nem enxerga.
+ * Este contexto nao guarda token nenhum — nem em memoria, nem em
+ * storage, nem em cookie legivel. Os tokens da API vivem num cookie
+ * HttpOnly escrito pelo proxy (server/session-proxy.ts), fora do alcance
+ * do JavaScript. Aqui fica so' quem esta logado, pra interface saber o
+ * que mostrar.
  *
- * O `nickname` daqui e' so pra pessoa saber que esta logada. Ele nao
- * acompanha nenhum post nem comentario, em lugar nenhum.
+ * Como o cookie sobrevive ao recarregamento, o boot e' uma pergunta
+ * simples: "quem sou eu?" (GET /auth/session). Se o cookie estiver la',
+ * a sessao volta; se nao, a pessoa e' anonima.
  * ------------------------------------------------------------------ */
 
 type Status = 'booting' | 'anonymous' | 'authenticated';
@@ -39,106 +40,45 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/** Renova um minuto antes de expirar, pra ninguem tomar 401 no meio de um clique. */
-const RENEW_MARGIN_S = 60;
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const tokenRef = useRef<string | null>(null);
-  const renewTimer = useRef<number | null>(null);
   const [status, setStatus] = useState<Status>('booting');
-  const [profile, setProfile] = useState<{ nickname: string; role: 'user' | 'admin' } | null>(null);
-
-  const clearRenew = useCallback(() => {
-    if (renewTimer.current !== null) {
-      window.clearTimeout(renewTimer.current);
-      renewTimer.current = null;
-    }
-  }, []);
+  const [profile, setProfile] = useState<Session | null>(null);
 
   const dropSession = useCallback(() => {
-    tokenRef.current = null;
-    clearRenew();
     setProfile(null);
     setStatus('anonymous');
     // Cache de dados privados nao sobrevive a queda de sessao.
     queryClient.clear();
-  }, [clearRenew]);
+  }, []);
 
-  // Referencia propria para o timer poder se reagendar depois de renovar.
-  const scheduleRenewRef = useRef<(expiresIn: number) => void>(() => {});
-
-  const scheduleRenew = useCallback(
-    (expiresIn: number) => {
-      clearRenew();
-      const delay = Math.max((expiresIn - RENEW_MARGIN_S) * 1000, 15_000);
-      renewTimer.current = window.setTimeout(() => {
-        // Refresh silencioso; o proprio client HTTP cuida da fila.
-        void authService
-          .bootstrapSession()
-          .then((renewed) => {
-            tokenRef.current = renewed.accessToken;
-            scheduleRenewRef.current(renewed.expiresIn);
-          })
-          .catch(() => dropSession());
-      }, delay);
-    },
-    [clearRenew, dropSession],
-  );
-
-  scheduleRenewRef.current = scheduleRenew;
-
-  // Registrado no primeiro render (antes de qualquer efeito disparar
-  // requisicao), pra nenhuma chamada sair sem Authorization.
+  // Registrado no primeiro render, antes de qualquer efeito disparar
+  // requisicao, pra nenhum 401 passar despercebido.
   useState(() => {
-    configureHttp({
-      getAccessToken: () => tokenRef.current,
-      onTokenRefreshed: (accessToken, expiresIn) => {
-        tokenRef.current = accessToken;
-        scheduleRenew(expiresIn);
-      },
-      onSessionLost: () => dropSession(),
-    });
+    configureHttp({ onUnauthorized: () => dropSession() });
     return null;
   });
 
-  const adopt = useCallback(
-    (session: Session) => {
-      tokenRef.current = session.accessToken;
-      setProfile({ nickname: session.nickname, role: session.role });
-      setStatus('authenticated');
-      scheduleRenew(session.expiresIn);
-    },
-    [scheduleRenew],
-  );
+  const adopt = useCallback((session: Session) => {
+    setProfile(session);
+    setStatus('authenticated');
+  }, []);
 
-  // Boot: existe cookie de refresh valido? Entao a sessao volta sozinha.
   useEffect(() => {
     let cancelled = false;
 
-    void (async () => {
-      try {
-        const refreshed = await authService.bootstrapSession();
-        if (cancelled) return;
-        tokenRef.current = refreshed.accessToken;
-        const who = await authService.me();
-        if (cancelled) return;
-        setProfile(who);
-        setStatus('authenticated');
-        scheduleRenew(refreshed.expiresIn);
-      } catch {
-        if (!cancelled) {
-          tokenRef.current = null;
-          setStatus('anonymous');
-        }
-      }
-    })();
+    void authService
+      .me()
+      .then((session) => {
+        if (!cancelled) adopt(session);
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('anonymous');
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [scheduleRenew]);
-
-  useEffect(() => clearRenew, [clearRenew]);
+  }, [adopt]);
 
   const login = useCallback(
     async (input: LoginInput) => {

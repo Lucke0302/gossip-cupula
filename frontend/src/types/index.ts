@@ -92,17 +92,19 @@ export const linkSchema = z
   .strict();
 
 /**
- * Sessao. `nickname` e' o apelido de login — ele NUNCA e' anexado a um
- * post ou comentario, so' existe para o proprio usuario saber que esta'
- * logado. `role` libera as acoes de admin do backend.
+ * Sessao, do ponto de vista do navegador.
+ *
+ * Repare no que NAO tem aqui: token. Os tokens ficam no cookie HttpOnly
+ * que o proxy-com-sessao escreve, e o JavaScript desta pagina nao os le' —
+ * por isso o unico dado de sessao que chega ao cliente e' quem voce e'.
+ *
+ * `nickname` NUNCA e' anexado a um post ou comentario; so existe pra
+ * pessoa saber que esta logada. `role` libera as acoes de admin.
  */
 export const sessionSchema = z
   .object({
-    nickname: z.string().min(1).max(50),
+    nickname: z.string().max(50),
     role: z.enum(['user', 'admin']),
-    /** Segundos ate' o access token expirar. Guardado so' em memoria. */
-    expiresIn: z.number().int().positive(),
-    accessToken: z.string().min(10),
   })
   .strict();
 
@@ -146,12 +148,16 @@ export const loginSchema = z.object({
   remember: z.boolean().default(false),
 });
 
+/*
+ * O codigo de convite saiu: a API nao tem esse conceito. O que ela exige
+ * pra criar conta e' username + e-mail + senha, e o e-mail e' de verdade
+ * — e' pra ele que vai a confirmacao sem a qual o login nao libera.
+ *
+ * E-mail e' dado de cadastro: nao acompanha post nem comentario.
+ */
 export const registerSchema = z.object({
   nickname: z.string().trim().min(2, 'apelido obrigatório').max(50),
-  inviteCode: z
-    .string()
-    .trim()
-    .regex(/^[A-Z]{2}-\d{4}$/, 'formato do convite: XX-0000'),
+  email: z.string().trim().email('e-mail inválido').max(256),
   password: z.string().min(6, 'senha de no mínimo 6 caracteres').max(100),
   oath: z.literal(true, {
     errorMap: () => ({ message: 'sem o juramento não tem cúpula' }),

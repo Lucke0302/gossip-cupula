@@ -294,6 +294,6 @@ export const links = [
 
 /** Contas de faz-de-conta pra testar o login sem backend. */
 export const accounts = [
-  { nickname: 'gossipgirl', password: 'xoxo123', role: 'admin' as const },
-  { nickname: 'convidada', password: 'cupula123', role: 'user' as const },
+  { nickname: 'gossipgirl', email: 'gossip@cupula.test', password: 'xoxo123', role: 'admin' as const },
+  { nickname: 'convidada', email: 'convidada@cupula.test', password: 'cupula123', role: 'user' as const },
 ];

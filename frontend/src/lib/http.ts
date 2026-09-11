@@ -6,29 +6,21 @@ import { mockFetch } from '../services/mock/server';
 /* ------------------------------------------------------------------ *
  * Client HTTP unico.
  *
- * Centraliza: baseURL, credentials, serializacao, tratamento de erro,
- * validacao Zod e o ciclo de refresh de token.
+ * Centraliza: baseURL, credentials, serializacao, tratamento de erro e
+ * validacao Zod. Nada fora de src/services deve chamar `fetch`.
  *
- * Nada fora de src/services deve chamar `fetch` diretamente.
+ * O que NAO esta mais aqui: token, header Authorization, ciclo de
+ * refresh e fila de renovacao. Isso tudo mudou de lado — agora vive no
+ * proxy-com-sessao (server/session-proxy.ts), que guarda os tokens num
+ * cookie HttpOnly. O JavaScript desta pagina nao tem acesso a eles, e e'
+ * exatamente esse o objetivo: um XSS aqui nao rouba sessao nenhuma.
  * ------------------------------------------------------------------ */
 
-type Hooks = {
-  /** Access token atual, guardado em memoria pelo AuthContext. */
-  getAccessToken: () => string | null;
-  /** Novo access token depois de um refresh bem-sucedido. */
-  onTokenRefreshed: (accessToken: string, expiresIn: number) => void;
-  /** Refresh falhou: derruba a sessao e manda pro /login. */
-  onSessionLost: () => void;
-};
+/** Avisado quando o proxy responde 401 — a sessao caiu. */
+let onUnauthorized: () => void = () => {};
 
-let hooks: Hooks = {
-  getAccessToken: () => null,
-  onTokenRefreshed: () => {},
-  onSessionLost: () => {},
-};
-
-export function configureHttp(next: Hooks): void {
-  hooks = next;
+export function configureHttp(hooks: { onUnauthorized: () => void }): void {
+  onUnauthorized = hooks.onUnauthorized;
 }
 
 export type RequestOptions<TSchema extends z.ZodTypeAny> = {
@@ -36,50 +28,11 @@ export type RequestOptions<TSchema extends z.ZodTypeAny> = {
   body?: unknown;
   schema: TSchema;
   signal?: AbortSignal;
-  /** Rotas publicas (login, cadastro, refresh) nao entram no ciclo de 401. */
-  skipAuthRetry?: boolean;
+  /** Login e cadastro respondem 401 sem que a sessao "tenha caido". */
+  skipSessionDrop?: boolean;
   query?: Record<string, string | number | undefined | null>;
 };
 
-/* ---------------------- fila de refresh ---------------------- *
- * Se cinco requisicoes tomarem 401 ao mesmo tempo, so UMA chama
- * /auth/refresh. As outras esperam nessa promise e depois repetem
- * a requisicao original com o token novo.
- * ------------------------------------------------------------- */
-let refreshInFlight: Promise<string> | null = null;
-
-async function runRefresh(): Promise<string> {
-  const response = await transport('/auth/refresh', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    // O refresh token vive num cookie httpOnly + Secure setado pelo backend.
-    // Ele nunca passa por JS, por isso o corpo vai vazio.
-    body: '{}',
-    credentials: 'include',
-  });
-
-  if (!response.ok) throw new SessionExpiredError();
-
-  const payload = (await response.json()) as { accessToken?: unknown; expiresIn?: unknown };
-
-  if (typeof payload.accessToken !== 'string' || typeof payload.expiresIn !== 'number') {
-    throw new SessionExpiredError();
-  }
-
-  hooks.onTokenRefreshed(payload.accessToken, payload.expiresIn);
-  return payload.accessToken;
-}
-
-function refreshOnce(): Promise<string> {
-  if (!refreshInFlight) {
-    refreshInFlight = runRefresh().finally(() => {
-      refreshInFlight = null;
-    });
-  }
-  return refreshInFlight;
-}
-
-/** Ponto unico de saida: rede de verdade, ou a camada de mocks. */
 function transport(path: string, init: RequestInit): Promise<Response> {
   if (USE_MOCKS) return mockFetch(path, init);
   return fetch(`${API_URL}${path}`, init);
@@ -115,40 +68,22 @@ export async function request<TSchema extends z.ZodTypeAny>(
   path: string,
   options: RequestOptions<TSchema>,
 ): Promise<z.infer<TSchema>> {
-  const url = buildUrl(path, options.query);
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
 
-  const send = async (): Promise<Response> => {
-    const headers: Record<string, string> = { Accept: 'application/json' };
-    if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  const response = await transport(buildUrl(path, options.query), {
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    // Obrigatorio: o cookie de sessao e' HttpOnly e so viaja com isso.
+    credentials: 'include',
+    signal: options.signal,
+  });
 
-    const token = hooks.getAccessToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    return transport(url, {
-      method: options.method ?? 'GET',
-      headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      // Obrigatorio: o refresh token mora num cookie httpOnly.
-      credentials: 'include',
-      signal: options.signal,
-    });
-  };
-
-  let response = await send();
-
-  if (response.status === 401 && !options.skipAuthRetry) {
-    try {
-      await refreshOnce();
-    } catch {
-      hooks.onSessionLost();
-      throw new SessionExpiredError();
-    }
-    // Uma unica retentativa. Se der 401 de novo, a sessao morreu mesmo.
-    response = await send();
-    if (response.status === 401) {
-      hooks.onSessionLost();
-      throw new SessionExpiredError();
-    }
+  if (response.status === 401 && !options.skipSessionDrop) {
+    // O proxy ja tentou renovar antes de desistir. Chegou 401 aqui, acabou.
+    onUnauthorized();
+    throw new SessionExpiredError();
   }
 
   if (!response.ok) throw await readError(response);
