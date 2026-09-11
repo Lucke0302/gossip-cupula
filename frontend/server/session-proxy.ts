@@ -322,6 +322,18 @@ export async function handleApiRequest(
       handleLogout(req, res);
       return;
     }
+    // Confirmação de e-mail é pública: quem clica no link ainda não tem
+    // sessão nenhuma. Repassa sem token e sem exigir cookie.
+    if (path === '/api/auth/confirm-email' && method === 'POST') {
+      const body = await readBody(req);
+      const result = await callApi('/api/Auth/confirm-email', {
+        method: 'POST',
+        body: body ?? {},
+      });
+      json(res, result.status, result.payload ?? {});
+      return;
+    }
+
     // O refresh é assunto interno do proxy — o navegador não chama.
     if (path === '/api/auth/refresh') {
       json(res, 404, { message: 'rota não exposta' });
