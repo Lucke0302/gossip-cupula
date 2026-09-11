@@ -29,6 +29,11 @@ public class AuthService(
         var username = registerDto.Username.Trim();
         var email = registerDto.Email.Trim().ToLowerInvariant();
 
+        if (username.Contains(' '))
+        {
+            throw new InvalidOperationException("O nome de usuário deve ser único e não pode conter espaços.");
+        }
+
         if (await dbContext.Users.AnyAsync(u => u.Email == email))
         {
             throw new InvalidOperationException("Já existe um usuário cadastrado com este e-mail.");
@@ -71,13 +76,15 @@ public class AuthService(
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
-    {
-        var email = loginDto.Email.Trim().ToLowerInvariant();
+{
+    var identifier = loginDto.Identifier.Trim().ToLowerInvariant();
 
-        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email)
-            ?? throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
+    // Busca o usuário comparando o identificador com o Email ou com o Username
+    var user = await dbContext.Users.FirstOrDefaultAsync(u => 
+        u.Email == identifier || u.Username.ToLower() == identifier)
+        ?? throw new UnauthorizedAccessException("Usuário, e-mail ou senha inválidos.");
 
-        var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, loginDto.Password);
+    var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, loginDto.Password);
         if (result == PasswordVerificationResult.Failed)
         {
             throw new UnauthorizedAccessException("E-mail ou senha inválidos.");

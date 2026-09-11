@@ -13,8 +13,8 @@ obj/
 logs/
 
 # Configurações locais e segredos (nunca versionar)
-# appsettings.Development.json
-# appsettings.Production.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.json
 .env
 secrets/
-
