@@ -40,12 +40,11 @@ public class AuthController : ControllerBase
         }
         catch (UnauthorizedAccessException)
         {
-            // E-mail inexistente ou senha incorreta.
-            return Unauthorized(new { message = "E-mail ou senha inválidos." });
+            // Atualizado para incluir "Usuário"
+            return Unauthorized(new { message = "Usuário/e-mail ou senha inválidos." });
         }
         catch (InvalidOperationException ex)
         {
-            // E-mail não confirmado ou conta aguardando aprovação de admin.
             return BadRequest(new { message = ex.Message });
         }
     }
