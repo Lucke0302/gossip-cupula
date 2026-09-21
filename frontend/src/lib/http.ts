@@ -30,11 +30,18 @@ export type RequestOptions<TSchema extends z.ZodTypeAny> = {
   signal?: AbortSignal;
   /** Login e cadastro respondem 401 sem que a sessao "tenha caido". */
   skipSessionDrop?: boolean;
+  /**
+   * 'auto' (padrao) segue a flag VITE_USE_MOCKS.
+   * 'mock' forca a camada falsa mesmo com a API ligada — usado pelo que a
+   * API ainda nao tem (comentarios, fotos, links). Sem isso essas telas
+   * receberiam 404 do servidor.
+   */
+  source?: 'auto' | 'mock';
   query?: Record<string, string | number | undefined | null>;
 };
 
-function transport(path: string, init: RequestInit): Promise<Response> {
-  if (USE_MOCKS) return mockFetch(path, init);
+function transport(path: string, init: RequestInit, source: 'auto' | 'mock'): Promise<Response> {
+  if (USE_MOCKS || source === 'mock') return mockFetch(path, init);
   return fetch(`${API_URL}${path}`, init);
 }
 
@@ -71,14 +78,18 @@ export async function request<TSchema extends z.ZodTypeAny>(
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
 
-  const response = await transport(buildUrl(path, options.query), {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    // Obrigatorio: o cookie de sessao e' HttpOnly e so viaja com isso.
-    credentials: 'include',
-    signal: options.signal,
-  });
+  const response = await transport(
+    buildUrl(path, options.query),
+    {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      // Obrigatorio: o cookie de sessao e' HttpOnly e so viaja com isso.
+      credentials: 'include',
+      signal: options.signal,
+    },
+    options.source ?? 'auto',
+  );
 
   if (response.status === 401 && !options.skipSessionDrop) {
     // O proxy ja tentou renovar antes de desistir. Chegou 401 aqui, acabou.

@@ -9,6 +9,7 @@ import {
   type MockComment,
   type MockPost,
 } from './data';
+import { USE_MOCKS } from '../../lib/env';
 
 /* ------------------------------------------------------------------ *
  * Camada de mocks.
@@ -30,6 +31,12 @@ const SESSION_KEY = 'mock:session';
 type MockSession = { nickname: string; role: 'user' | 'admin' };
 
 function readSession(): MockSession | null {
+  // Com a API real ligada, os mocks so' atendem o que ela ainda nao tem
+  // (comentarios, fotos, links). Nesse caso quem autenticou foi o proxy,
+  // la' atras — se este gate tambem exigisse login, ele responderia 401 e
+  // derrubaria a sessao de verdade.
+  if (!USE_MOCKS) return { nickname: '', role: 'user' };
+
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     return raw ? (JSON.parse(raw) as MockSession) : null;

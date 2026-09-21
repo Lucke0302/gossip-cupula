@@ -1,4 +1,5 @@
 import { request } from '../lib/http';
+import { USE_MOCKS } from '../lib/env';
 import {
   pageSchema,
   postDetailSchema,
@@ -8,14 +9,25 @@ import {
   type Post,
   type PostDetail,
 } from '../types';
+import * as live from './backend/posts';
+
+/* ------------------------------------------------------------------ *
+ * Porta de entrada dos posts. As telas chamam daqui e não sabem de onde
+ * o dado veio.
+ *
+ * Duas fontes, mesma assinatura:
+ *
+ *  - mocks: já falam o contrato anônimo que a gente quer que a API fale
+ *    um dia, então vêm prontos e só passam pelo schema;
+ *  - API real: fala outro contrato (array cru, campo de autor, data com
+ *    segundos), então passa pela tradução em services/backend.
+ * ------------------------------------------------------------------ */
 
 const postPageSchema = pageSchema(postSchema);
 
-/** Feed paginado por cursor opaco. Nada de `?page=2`. */
-export function listPosts(
-  cursor: string | null,
-  signal?: AbortSignal,
-): Promise<Page<Post>> {
+export function listPosts(cursor: string | null, signal?: AbortSignal): Promise<Page<Post>> {
+  if (!USE_MOCKS) return live.listPosts(cursor, signal);
+
   return request('/posts', {
     query: { cursor: cursor ?? undefined, limit: 4 },
     schema: postPageSchema,
@@ -24,17 +36,17 @@ export function listPosts(
 }
 
 export function getPost(id: string, signal?: AbortSignal): Promise<PostDetail> {
+  if (!USE_MOCKS) return live.getPost(id, signal);
+
   return request(`/posts/${encodeURIComponent(id)}`, {
     schema: postDetailSchema,
     signal,
   });
 }
 
-/**
- * Cria um post. A autoria vai implicita no Authorization header e para
- * no backend — a resposta ja volta anonima, igual a de qualquer leitura.
- */
 export function createPost(input: CreatePostInput): Promise<PostDetail> {
+  if (!USE_MOCKS) return live.createPost(input);
+
   return request('/posts', {
     method: 'POST',
     body: {

@@ -54,7 +54,9 @@ export default function PostPage() {
           <ErrorState error={post.error} onRetry={() => void post.refetch()} />
         ) : null}
 
-        {post.isSuccess ? <PostDetail post={post.data} /> : null}
+        {post.isSuccess ? (
+          <PostDetail post={post.data} commentCount={comments.data?.items.length} />
+        ) : null}
 
         {post.isSuccess && id ? (
           <Card as="section" aria-labelledby="comentarios-titulo">
