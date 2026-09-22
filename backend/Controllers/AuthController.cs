@@ -1,6 +1,8 @@
 using GossipCupula.Api.DTOs.Auth;
 using GossipCupula.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace GossipCupula.Api.Controllers;
 
@@ -80,5 +82,23 @@ public class AuthController : ControllerBase
             // Refresh token inválido ou expirado.
             return Unauthorized(new { message = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Verifica se o token atual é válido e retorna os dados de sessão do usuário.
+    /// </summary>
+    [HttpGet("authorized")]
+    [Authorize]
+    public IActionResult CheckAuthorized()
+    {
+        // Extrai o ID e a Role diretamente do token JWT decodificado
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+        return Ok(new 
+        { 
+            userId = userId,
+            isAdmin = role == "Admin" 
+        });
     }
 }
