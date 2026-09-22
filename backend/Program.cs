@@ -3,6 +3,7 @@ using GossipCupula.Api.Data;
 using GossipCupula.Api.Hubs;
 using GossipCupula.Api.Models;
 using GossipCupula.Api.Services;
+using GossipCupula.Api.Workers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -103,6 +104,8 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddHostedService<AivenKeepAliveWorker>();
 
 var app = builder.Build();
 
