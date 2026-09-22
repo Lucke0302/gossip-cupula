@@ -1,3 +1,4 @@
+using GossipCupula.Api.DTOs.Admin;
 using GossipCupula.Api.DTOs.Auth;
 
 namespace GossipCupula.Api.Services;
@@ -16,6 +17,13 @@ public interface IAuthService
     /// Marca o e-mail do usuário como confirmado. Retorna false se não existir.
     /// </summary>
     Task<bool> ConfirmEmailAsync(string email);
+
+    /// <summary>
+    /// Lista os usuários para o painel de administração (apenas Admin).
+    /// As contas ainda não aprovadas vêm primeiro, pois são as que exigem
+    /// decisão; dentro de cada grupo, as mais recentes na frente.
+    /// </summary>
+    Task<IReadOnlyList<UserSummaryDto>> ListUsersAsync();
 
     /// <summary>
     /// Aprova a conta de um usuário (apenas Admin). Retorna false se não existir.

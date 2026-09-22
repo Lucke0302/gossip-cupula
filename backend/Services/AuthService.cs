@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using GossipCupula.Api.Data;
+using GossipCupula.Api.DTOs.Admin;
 using GossipCupula.Api.DTOs.Auth;
 using GossipCupula.Api.Models;
 using Microsoft.AspNetCore.Identity;
@@ -122,6 +123,28 @@ public class AuthService(
         await dbContext.SaveChangesAsync();
 
         return true;
+    }
+
+    public async Task<IReadOnlyList<UserSummaryDto>> ListUsersAsync()
+    {
+        // O Select projeta direto para o DTO: PasswordHash e RefreshToken
+        // não entram na consulta e, portanto, nem saem do banco.
+        // AsNoTracking porque é leitura pura — nada aqui será alterado.
+        return await dbContext.Users
+            .AsNoTracking()
+            .OrderBy(u => u.IsApprovedByAdmin)
+            .ThenByDescending(u => u.CreatedAt)
+            .Select(u => new UserSummaryDto
+            {
+                Id = u.Id,
+                Username = u.Username,
+                Email = u.Email,
+                Role = u.Role,
+                IsEmailConfirmed = u.IsEmailConfirmed,
+                IsApprovedByAdmin = u.IsApprovedByAdmin,
+                CreatedAt = u.CreatedAt
+            })
+            .ToListAsync();
     }
 
     public async Task<bool> ApproveUserAsync(Guid userId)

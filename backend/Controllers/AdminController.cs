@@ -1,3 +1,4 @@
+using GossipCupula.Api.DTOs.Admin;
 using GossipCupula.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,16 @@ public class AdminController : ControllerBase
     public AdminController(IAuthService authService)
     {
         _authService = authService;
+    }
+
+    /// <summary>
+    /// Lista os usuários cadastrados. As contas aguardando aprovação vêm
+    /// primeiro, porque são as que exigem uma decisão do Admin.
+    /// </summary>
+    [HttpGet("users")]
+    public async Task<ActionResult<IReadOnlyList<UserSummaryDto>>> ListUsers()
+    {
+        return Ok(await _authService.ListUsersAsync());
     }
 
     /// <summary>
