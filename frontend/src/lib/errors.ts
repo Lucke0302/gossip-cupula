@@ -37,6 +37,12 @@ export class SessionExpiredError extends Error {
 }
 
 export function messageFor(error: unknown): string {
+  // Rede de seguranca: um ZodError cru (de algum .parse() que escapou)
+  // nao pode virar "alguma coisa deu errado" — e' quebra de contrato e
+  // merece a mesma mensagem, senao o bug fica invisivel.
+  if (error instanceof Error && error.name === 'ZodError') {
+    return 'a fonte respondeu errado. avisa quem cuida do servidor.';
+  }
   if (error instanceof ContractError) {
     return 'a fonte respondeu errado. avisa quem cuida do servidor.';
   }

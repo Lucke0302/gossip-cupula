@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ContractError } from '../../lib/errors';
 import { postDetailSchema, postSchema, type Post, type PostDetail } from '../../types';
 
 /* ------------------------------------------------------------------ *
@@ -94,6 +95,29 @@ function resumo(corpo: string[]): string {
 }
 
 /**
+ * Valida o objeto já traduzido contra o schema do domínio.
+ *
+ * Usa safeParse e converte a falha em ContractError de propósito: um
+ * ZodError cru escapando daqui chegaria na tela como "alguma coisa deu
+ * errado", sem dizer o quê e sem registrar nada. ContractError é o tipo
+ * que o resto do app entende, e loga o campo culpado em dev.
+ */
+function validar<TSchema extends z.ZodTypeAny>(
+  schema: TSchema,
+  valor: unknown,
+  onde: string,
+): z.infer<TSchema> {
+  const resultado = schema.safeParse(valor);
+  if (!resultado.success) {
+    if (import.meta.env.DEV) {
+      console.error(`[contrato] tradução de ${onde}`, resultado.error.issues, valor);
+    }
+    throw new ContractError(onde, resultado.error.issues);
+  }
+  return resultado.data as z.infer<TSchema>;
+}
+
+/**
  * DTO → Post.
  *
  * Repare que o objeto é montado campo a campo. Não existe spread do DTO
@@ -109,7 +133,7 @@ export function toPost(dto: BackendPost): Post {
   vigiarAutor(dto);
   const corpo = paragrafos(dto.content);
 
-  return postSchema.parse({
+  return validar(postSchema, {
     id: dto.id,
     title: dto.title ?? 'sem manchete',
     excerpt: resumo(corpo),
@@ -121,21 +145,23 @@ export function toPost(dto: BackendPost): Post {
     likes: dto.likesCount,
     dislikes: dto.dislikesCount,
     publishedAt: horaCheia(dto.createdAt),
-  });
+  }, 'post');
 }
 
 export function toPostDetail(dto: BackendPost): PostDetail {
   vigiarAutor(dto);
   const corpo = paragrafos(dto.content);
 
-  return postDetailSchema.parse({
+  return validar(postDetailSchema, {
     id: dto.id,
     title: dto.title ?? 'sem manchete',
     excerpt: resumo(corpo),
     imageUrl: null,
     imageAlt: null,
     commentCount: 0,
+    likes: dto.likesCount,
+    dislikes: dto.dislikesCount,
     publishedAt: horaCheia(dto.createdAt),
     body: corpo,
-  });
+  }, 'post detalhado');
 }
