@@ -313,3 +313,58 @@ export const accounts = [
   { nickname: 'gossipgirl', email: 'gossip@cupula.test', password: 'xoxo123', role: 'admin' as const },
   { nickname: 'convidada', email: 'convidada@cupula.test', password: 'cupula123', role: 'user' as const },
 ];
+
+/**
+ * Usuarios do painel de administracao.
+ *
+ * Mesmo formato do UserSummaryDto do backend. Os ids sao GUIDs de
+ * mentira, mas com a cara certa — o schema do admin exige uuid.
+ */
+export type MockUser = {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  isEmailConfirmed: boolean;
+  isApprovedByAdmin: boolean;
+  createdAt: string;
+};
+
+export const adminUsers: MockUser[] = [
+  {
+    id: '11111111-1111-4111-8111-111111111111',
+    username: 'gossipgirl',
+    email: 'gossip@cupula.test',
+    role: 'Admin',
+    isEmailConfirmed: true,
+    isApprovedByAdmin: true,
+    createdAt: hoursAgo(900),
+  },
+  {
+    id: '22222222-2222-4222-8222-222222222222',
+    username: 'convidada',
+    email: 'convidada@cupula.test',
+    role: 'User',
+    isEmailConfirmed: true,
+    isApprovedByAdmin: true,
+    createdAt: hoursAgo(400),
+  },
+  {
+    id: '33333333-3333-4333-8333-333333333333',
+    username: 'quase_dentro',
+    email: 'quase@cupula.test',
+    role: 'User',
+    isEmailConfirmed: true,
+    isApprovedByAdmin: false,
+    createdAt: hoursAgo(30),
+  },
+  {
+    id: '44444444-4444-4444-8444-444444444444',
+    username: 'recem_chegada',
+    email: 'recem@cupula.test',
+    role: 'User',
+    isEmailConfirmed: false,
+    isApprovedByAdmin: false,
+    createdAt: hoursAgo(3),
+  },
+];

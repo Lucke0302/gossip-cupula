@@ -1,5 +1,6 @@
 import {
   accounts,
+  adminUsers,
   comments,
   coarse,
   links,
@@ -320,6 +321,53 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
       return json({ postId: post.id, likes: post.likes, dislikes: post.dislikes });
     },
   },
+  {
+    method: 'GET',
+    pattern: /^\/admin\/users$/,
+    handler: () => {
+      const session = readSession();
+      if (!session) return unauthorized();
+      // Nos mocks o gate de papel vale; na API quem barra e' o 403.
+      if (USE_MOCKS && session.role !== 'admin') return fail(403, 'só quem tem a chave');
+
+      const ordenados = [...adminUsers].sort((a, b) => {
+        if (a.isApprovedByAdmin !== b.isApprovedByAdmin) return a.isApprovedByAdmin ? 1 : -1;
+        return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+      });
+      return json(ordenados);
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/admin\/users\/([^/]+)\/(approve|revoke)$/,
+    handler: (_init, params, url) => {
+      const session = readSession();
+      if (!session) return unauthorized();
+      if (USE_MOCKS && session.role !== 'admin') return fail(403, 'só quem tem a chave');
+
+      const alvo = adminUsers.find((u) => u.id === params.id);
+      if (!alvo) return fail(404, 'esse usuário não existe');
+
+      alvo.isApprovedByAdmin = url.pathname.endsWith('/approve');
+      return new Response(null, { status: 204 });
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/admin\/users\/([^/]+)$/,
+    handler: (_init, params) => {
+      const session = readSession();
+      if (!session) return unauthorized();
+      if (USE_MOCKS && session.role !== 'admin') return fail(403, 'só quem tem a chave');
+
+      const indice = adminUsers.findIndex((u) => u.id === params.id);
+      if (indice < 0) return fail(404, 'esse usuário não existe');
+
+      adminUsers.splice(indice, 1);
+      return new Response(null, { status: 204 });
+    },
+  },
+
   {
     method: 'GET',
     pattern: /^\/photos$/,

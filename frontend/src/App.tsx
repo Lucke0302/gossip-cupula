@@ -14,6 +14,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const PendingPage = lazy(() => import('./pages/PendingPage'));
 const LinksPage = lazy(() => import('./pages/LinksPage'));
 const PhotosPage = lazy(() => import('./pages/PhotosPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function RouteFallback() {
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/novo" element={<NewPostPage />} />
             <Route path="/fotos" element={<PhotosPage />} />
             <Route path="/links" element={<LinksPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

@@ -20,7 +20,7 @@ type Props = {
  * e o menu de texto no rodapé — igual às telas 390px do canvas.
  */
 export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page', bare = false }: Props) {
-  const { isAuthenticated, nickname, logout } = useAuth();
+  const { isAuthenticated, nickname, role, logout } = useAuth();
 
   return (
     <div className="bokeh min-h-screen pb-16">
@@ -68,6 +68,14 @@ export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page
           <p>
             você entrou como <span className="text-muted-dim">{nickname}</span> — e isso não aparece
             em lugar nenhum além daqui.{' '}
+            {role === 'admin' ? (
+              <>
+                <Link to="/admin" className="text-fofocas">
+                  a porta
+                </Link>
+                {' · '}
+              </>
+            ) : null}
             <button
               type="button"
               onClick={() => void logout()}
