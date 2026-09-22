@@ -245,7 +245,9 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
     pattern: /^\/posts\/([^/]+)\/comments$/,
     handler: (_init, params) => {
       if (!readSession()) return unauthorized();
-      if (!posts.some((p) => p.id === params.id)) {
+      // Com a API real ligada os posts sao dela, nao desta lista —
+      // conferir aqui daria 404 em post que existe de verdade.
+      if (USE_MOCKS && !posts.some((p) => p.id === params.id)) {
         return fail(404, 'esse babado não existe (ou já sumiu)');
       }
       const items = comments
@@ -261,7 +263,9 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
     handler: (_init, params) => {
       const session = readSession();
       if (!session) return unauthorized();
-      if (!posts.some((p) => p.id === params.id)) {
+      // Com a API real ligada os posts sao dela, nao desta lista —
+      // conferir aqui daria 404 em post que existe de verdade.
+      if (USE_MOCKS && !posts.some((p) => p.id === params.id)) {
         return fail(404, 'esse babado não existe (ou já sumiu)');
       }
 
