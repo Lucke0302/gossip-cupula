@@ -142,17 +142,31 @@ export type Page<T> = { items: T[]; nextCursor: string | null };
 /* Aqui a autoria existe — mas implicitamente, via token. Nenhum campo de
    identidade viaja no corpo. */
 
+/*
+ * Limites do post.
+ *
+ * O minimo existe so' pra barrar envio vazio ou acidental — a API aceita
+ * qualquer conteudo nao-vazio, entao nao faz sentido o front ser muito
+ * mais exigente que ela. "ela voltou." e' um babado legitimo.
+ *
+ * As mensagens dizem o numero: "conta mais" sozinho nao informa quanto
+ * falta, e a pessoa fica tentando adivinhar.
+ */
+export const POST_TITLE_MIN = 4;
+export const POST_CONTENT_MIN = 10;
+export const POST_CONTENT_MAX = 1200;
+
 export const createPostSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(4, 'manchete curta demais pra ser lembrada amanhã')
+    .min(POST_TITLE_MIN, `a manchete precisa de pelo menos ${POST_TITLE_MIN} caracteres`)
     .max(200, 'manchete até 200 caracteres'),
   content: z
     .string()
     .trim()
-    .min(20, 'conta mais: hora, lugar e um detalhe que só quem estava lá sabe')
-    .max(1200, 'o babado cabe em 1200 caracteres'),
+    .min(POST_CONTENT_MIN, `o babado precisa de pelo menos ${POST_CONTENT_MIN} caracteres`)
+    .max(POST_CONTENT_MAX, `o babado cabe em ${POST_CONTENT_MAX} caracteres`),
   imageDataUrl: z.string().nullable().default(null),
 });
 

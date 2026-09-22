@@ -8,7 +8,12 @@ import { Button, FieldError, Label, TextArea, TextInput } from '../components/ui
 import { useToast } from '../contexts/ToastContext';
 import { useCreatePost } from '../hooks/usePosts';
 import { messageFor } from '../lib/errors';
-import { createPostSchema, type CreatePostInput } from '../types';
+import {
+  createPostSchema,
+  POST_CONTENT_MAX,
+  POST_CONTENT_MIN,
+  type CreatePostInput,
+} from '../types';
 
 const SECTIONS = [
   {
@@ -153,7 +158,16 @@ export default function NewPostPage() {
               />
               <div className="mt-[5px] flex justify-between gap-3 font-body text-[10.5px] text-muted">
                 <span id="content-hint">hora, lugar e um detalhe que só quem estava lá sabe</span>
-                <span aria-live="polite">{content.length} / 1200</span>
+                {/*
+                  Enquanto falta texto, o contador mostra quanto falta — pra
+                  pessoa descobrir o limite antes de apanhar do formulário,
+                  não depois de enviar.
+                */}
+                <span aria-live="polite" className="flex-none">
+                  {content.trim().length < POST_CONTENT_MIN
+                    ? `faltam ${POST_CONTENT_MIN - content.trim().length} caracteres`
+                    : `${content.length} / ${POST_CONTENT_MAX}`}
+                </span>
               </div>
               <FieldError id="content-error">{errors.content?.message}</FieldError>
             </div>
