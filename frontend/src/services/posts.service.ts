@@ -4,10 +4,13 @@ import {
   pageSchema,
   postDetailSchema,
   postSchema,
+  voteResultSchema,
   type CreatePostInput,
   type Page,
   type Post,
   type PostDetail,
+  type VoteResult,
+  type VoteValue,
 } from '../types';
 import * as live from './backend/posts';
 
@@ -41,6 +44,21 @@ export function getPost(id: string, signal?: AbortSignal): Promise<PostDetail> {
   return request(`/posts/${encodeURIComponent(id)}`, {
     schema: postDetailSchema,
     signal,
+  });
+}
+
+/**
+ * Vota num post. 1 = amei, -1 = credo.
+ *
+ * Mesma rota nos dois mundos — o mock imita a regra da API.
+ */
+export function votePost(id: string, voteType: VoteValue): Promise<VoteResult> {
+  if (!USE_MOCKS) return live.votePost(id, voteType);
+
+  return request(`/posts/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    body: { voteType },
+    schema: voteResultSchema,
   });
 }
 

@@ -41,9 +41,31 @@ export const postSchema = z
     imageUrl: z.string().url().nullable(),
     imageAlt: z.string().nullable(),
     commentCount: z.number().int().nonnegative(),
+    /*
+     * Contagens agregadas. Sao so' numeros: a API nunca diz QUEM votou, e
+     * tambem nao diz se VOCE votou — nao existe campo do tipo "myVote".
+     * Por isso o estado visual do proprio voto e' lembrado no navegador,
+     * nao no servidor (veja src/lib/votes.ts).
+     */
+    likes: z.number().int().nonnegative(),
+    dislikes: z.number().int().nonnegative(),
     publishedAt: coarseTimestampSchema,
   })
   .strict();
+
+/** 1 = amei, -1 = credo. Os mesmos valores que o VoteDto da API espera. */
+export const voteValueSchema = z.union([z.literal(1), z.literal(-1)]);
+
+export const voteResultSchema = z
+  .object({
+    postId: z.string(),
+    likes: z.number().int().nonnegative(),
+    dislikes: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export type VoteValue = z.infer<typeof voteValueSchema>;
+export type VoteResult = z.infer<typeof voteResultSchema>;
 
 export const postDetailSchema = postSchema
   .extend({

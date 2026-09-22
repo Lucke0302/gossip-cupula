@@ -118,6 +118,8 @@ export function toPost(dto: BackendPost): Post {
     imageAlt: null,
     // A API não tem comentários. Fica em zero até as rotas existirem.
     commentCount: 0,
+    likes: dto.likesCount,
+    dislikes: dto.dislikesCount,
     publishedAt: horaCheia(dto.createdAt),
   });
 }

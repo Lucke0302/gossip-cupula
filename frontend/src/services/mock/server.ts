@@ -101,6 +101,8 @@ function toPostSummary(post: MockPost) {
     imageUrl: post.imageUrl,
     imageAlt: post.imageAlt,
     commentCount: comments.filter((c) => c.postId === post.id).length,
+    likes: post.likes,
+    dislikes: post.dislikes,
     publishedAt: post.publishedAt,
   };
 }
@@ -241,6 +243,8 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
         body: paragraphs.length > 0 ? paragraphs : [content.trim()],
         imageUrl: imageDataUrl ?? null,
         imageAlt: imageDataUrl ? 'Foto anexada ao post' : null,
+        likes: 0,
+        dislikes: 0,
         // A autoria (session.nickname) para AQUI. Nao entra no registro.
         publishedAt: coarse(new Date()),
       };
@@ -297,6 +301,25 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
     },
   },
 
+  {
+    method: 'POST',
+    pattern: /^\/posts\/([^/]+)\/vote$/,
+    handler: (_init, params) => {
+      if (!readSession()) return unauthorized();
+      const post = posts.find((p) => p.id === params.id);
+      if (!post) return fail(404, 'esse babado não existe (ou já sumiu)');
+
+      const { voteType } = parseBody<{ voteType?: number }>(_init);
+      if (voteType !== 1 && voteType !== -1) return fail(400, 'voto inválido');
+
+      // A API guarda um voto por usuario e alterna; aqui, com um usuario
+      // so', e' suficiente mexer no contador.
+      if (voteType === 1) post.likes += 1;
+      else post.dislikes += 1;
+
+      return json({ postId: post.id, likes: post.likes, dislikes: post.dislikes });
+    },
+  },
   {
     method: 'GET',
     pattern: /^\/photos$/,

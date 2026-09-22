@@ -1,4 +1,5 @@
 import { Card } from './Card';
+import { VoteButtons } from './VoteButtons';
 import { fuzzyTime, fuzzyTimeLong, plural } from '../lib/format';
 import type { PostDetail as PostDetailType } from '../types';
 
@@ -54,6 +55,10 @@ export function PostDetail({
           xoxo, cúpula
         </span>
       </footer>
+
+      <div className="mt-2 border-t border-hairline px-[3px] pb-[2px] pt-2.5">
+        <VoteButtons post={post} />
+      </div>
     </Card>
   );
 }

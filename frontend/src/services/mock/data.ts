@@ -47,6 +47,8 @@ export type MockPost = {
   body: string[];
   imageUrl: string | null;
   imageAlt: string | null;
+  likes: number;
+  dislikes: number;
   publishedAt: string;
 };
 
@@ -69,6 +71,8 @@ export const posts: MockPost[] = [
     ],
     imageUrl: stripeImage(840, 500, 'FOTO DO POST'),
     imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    likes: 14,
+    dislikes: 3,
     publishedAt: hoursAgo(3),
   },
   {
@@ -82,6 +86,8 @@ export const posts: MockPost[] = [
     ],
     imageUrl: stripeImage(840, 392, 'FOTO DO POST'),
     imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    likes: 6,
+    dislikes: 1,
     publishedAt: hoursAgo(28),
   },
   {
@@ -95,6 +101,8 @@ export const posts: MockPost[] = [
     ],
     imageUrl: null,
     imageAlt: null,
+    likes: 3,
+    dislikes: 0,
     publishedAt: hoursAgo(51),
   },
   {
@@ -108,6 +116,8 @@ export const posts: MockPost[] = [
     ],
     imageUrl: stripeImage(840, 440, 'FOTO DO POST'),
     imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    likes: 9,
+    dislikes: 2,
     publishedAt: hoursAgo(74),
   },
   {
@@ -121,6 +131,8 @@ export const posts: MockPost[] = [
     ],
     imageUrl: stripeImage(840, 380, 'FOTO DO POST'),
     imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    likes: 21,
+    dislikes: 5,
     publishedAt: hoursAgo(99),
   },
   {
@@ -134,6 +146,8 @@ export const posts: MockPost[] = [
     ],
     imageUrl: null,
     imageAlt: null,
+    likes: 4,
+    dislikes: 1,
     publishedAt: hoursAgo(126),
   },
   {
@@ -147,6 +161,8 @@ export const posts: MockPost[] = [
     ],
     imageUrl: stripeImage(840, 420, 'FOTO DO POST'),
     imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    likes: 11,
+    dislikes: 2,
     publishedAt: hoursAgo(150),
   },
 ];

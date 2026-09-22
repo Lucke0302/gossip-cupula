@@ -1,5 +1,13 @@
 import { request } from '../../lib/http';
-import type { CreatePostInput, Page, Post, PostDetail } from '../../types';
+import {
+  voteResultSchema,
+  type CreatePostInput,
+  type Page,
+  type Post,
+  type PostDetail,
+  type VoteResult,
+  type VoteValue,
+} from '../../types';
 import { backendPostListSchema, backendPostSchema, toPost, toPostDetail } from './dto';
 
 /* ------------------------------------------------------------------ *
@@ -58,4 +66,18 @@ export function createPost(input: CreatePostInput): Promise<PostDetail> {
     body: { title: input.title, content: input.content },
     schema: backendPostSchema,
   }).then(toPostDetail);
+}
+
+/**
+ * Vota. `voteType` 1 = amei, -1 = credo.
+ *
+ * A API alterna sozinha: mesmo voto duas vezes remove, voto diferente
+ * troca. A resposta traz as contagens ja' atualizadas.
+ */
+export function votePost(id: string, voteType: VoteValue): Promise<VoteResult> {
+  return request(`/posts/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    body: { voteType },
+    schema: voteResultSchema,
+  });
 }

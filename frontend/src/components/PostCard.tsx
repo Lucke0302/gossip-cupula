@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Card } from './Card';
+import { VoteButtons } from './VoteButtons';
 import { fuzzyTime, fuzzyTimeLong, plural } from '../lib/format';
 import type { Post } from '../types';
 
@@ -44,6 +45,10 @@ export function PostCard({ post }: { post: Post }) {
         <span aria-hidden="true" className="font-body text-[10.5px] tracking-[.04em] text-[#7aa8d8]">
           xoxo, cúpula
         </span>
+      </div>
+
+      <div className="mt-1 border-t border-hairline px-[3px] pb-[2px] pt-2">
+        <VoteButtons post={post} />
       </div>
     </Card>
   );
