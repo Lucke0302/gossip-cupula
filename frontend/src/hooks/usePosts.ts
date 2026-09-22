@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/queryClient';
-import { createPost, getPost, listPosts } from '../services/posts.service';
+import { createPost, deletePost, getPost, listPosts } from '../services/posts.service';
 import type { CreatePostInput, Page, Post, PostDetail } from '../types';
 
 /** Feed com scroll infinito por cursor opaco. */
@@ -19,6 +19,24 @@ export function usePost(id: string | undefined, enabled: boolean) {
     queryKey: queryKeys.post(id ?? ''),
     queryFn: ({ signal }) => getPost(id ?? '', signal),
     enabled: enabled && Boolean(id),
+  });
+}
+
+/**
+ * Apaga um post.
+ *
+ * Sem otimismo: apagar é irreversível, então a lista só muda depois que
+ * o servidor confirma. Some do cache do detalhe e recarrega o feed.
+ */
+export function useDeletePost() {
+  const client = useQueryClient();
+
+  return useMutation<undefined, Error, string>({
+    mutationFn: deletePost,
+    onSuccess: (_resultado, id) => {
+      client.removeQueries({ queryKey: queryKeys.post(id) });
+      void client.invalidateQueries({ queryKey: queryKeys.posts });
+    },
   });
 }
 

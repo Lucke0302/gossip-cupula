@@ -1,4 +1,5 @@
-import { Link, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { CommentForm } from '../components/CommentForm';
 import { CommentList } from '../components/CommentList';
@@ -8,9 +9,10 @@ import { Layout } from '../components/Layout';
 import { PostDetail } from '../components/PostDetail';
 import { PostCardSkeleton } from '../components/Skeleton';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { useComments } from '../hooks/useComments';
-import { usePost } from '../hooks/usePosts';
-import { ApiError } from '../lib/errors';
+import { useDeletePost, usePost } from '../hooks/usePosts';
+import { ApiError, messageFor } from '../lib/errors';
 
 const SECTIONS = [
   {
@@ -32,7 +34,11 @@ const SECTIONS = [
 
 export default function PostPage() {
   const { id } = useParams<{ id: string }>();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
+  const navigate = useNavigate();
+  const { push } = useToast();
+  const remover = useDeletePost();
+  const [apagando, setApagando] = useState(false);
 
   const post = usePost(id, isAuthenticated);
   const comments = useComments(id, isAuthenticated);
@@ -92,11 +98,56 @@ export default function PostPage() {
           </Card>
         ) : null}
 
-        <p className="text-center">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <Link to="/" className="font-body text-[11.5px] text-welcome">
             ← voltar pro feed
           </Link>
-        </p>
+
+          {/* Apagar é da cúpula: só admin vê. Quem barra é o 403 da API. */}
+          {post.isSuccess && role === 'admin' && id ? (
+            apagando ? (
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-body text-[11.5px] text-[#e8a0a0]">
+                  apagar de vez? não dá pra desfazer.
+                </span>
+                <button
+                  type="button"
+                  disabled={remover.isPending}
+                  onClick={() =>
+                    remover.mutate(id, {
+                      onSuccess: () => {
+                        push('apagado. como se nunca tivesse acontecido.', 'success');
+                        navigate('/', { replace: true });
+                      },
+                      onError: (erro) => {
+                        setApagando(false);
+                        push(messageFor(erro), 'error');
+                      },
+                    })
+                  }
+                  className="font-body text-[11.5px] text-[#e88a8a] underline disabled:opacity-50"
+                >
+                  {remover.isPending ? 'apagando…' : 'sim, apaga'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApagando(false)}
+                  className="font-body text-[11.5px] text-welcome underline"
+                >
+                  deixa
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setApagando(true)}
+                className="font-body text-[11.5px] text-[#e88a8a] underline"
+              >
+                apagar este babado
+              </button>
+            )
+          ) : null}
+        </div>
       </div>
     </Layout>
   );

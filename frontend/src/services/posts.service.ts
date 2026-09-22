@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { request } from '../lib/http';
 import { USE_MOCKS } from '../lib/env';
 import {
@@ -44,6 +45,21 @@ export function getPost(id: string, signal?: AbortSignal): Promise<PostDetail> {
   return request(`/posts/${encodeURIComponent(id)}`, {
     schema: postDetailSchema,
     signal,
+  });
+}
+
+/**
+ * Apaga um post — irreversível, e só para admin.
+ *
+ * O front esconde o botão de quem não é admin por conveniência; quem
+ * barra de verdade é o 403 da API.
+ */
+export function deletePost(id: string): Promise<undefined> {
+  if (!USE_MOCKS) return live.deletePost(id);
+
+  return request(`/posts/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    schema: z.undefined(),
   });
 }
 

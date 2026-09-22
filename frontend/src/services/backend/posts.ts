@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { request } from '../../lib/http';
 import {
   voteResultSchema,
@@ -79,5 +80,15 @@ export function votePost(id: string, voteType: VoteValue): Promise<VoteResult> {
     method: 'POST',
     body: { voteType },
     schema: voteResultSchema,
+  });
+}
+
+/**
+ * Apaga um post. So' quem tem role Admin — a API devolve 403 pro resto.
+ */
+export function deletePost(id: string): Promise<undefined> {
+  return request(`/posts/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    schema: z.undefined(),
   });
 }

@@ -303,6 +303,26 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   },
 
   {
+    method: 'DELETE',
+    pattern: /^\/posts\/([^/]+)$/,
+    handler: (_init, params) => {
+      const session = readSession();
+      if (!session) return unauthorized();
+      // Espelha a API: apagar post e' privilegio de Admin.
+      if (USE_MOCKS && session.role !== 'admin') return fail(403, 'só quem tem a chave');
+
+      const indice = posts.findIndex((p) => p.id === params.id);
+      if (indice < 0) return fail(404, 'esse babado não existe (ou já sumiu)');
+
+      posts.splice(indice, 1);
+      // Comentarios orfaos vao junto.
+      for (let i = comments.length - 1; i >= 0; i -= 1) {
+        if (comments[i]?.postId === params.id) comments.splice(i, 1);
+      }
+      return new Response(null, { status: 204 });
+    },
+  },
+  {
     method: 'POST',
     pattern: /^\/posts\/([^/]+)\/vote$/,
     handler: (_init, params) => {
