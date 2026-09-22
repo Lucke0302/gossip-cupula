@@ -84,6 +84,32 @@ do `[ApiController]` seguem o formato `ProblemDetails`.
 Exige autenticação **com role `Admin`** no JWT (`[Authorize(Roles = "Admin")]`).
 Sem token → **401**; token de usuário comum → **403**.
 
+### `GET /api/admin/users`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim — role `Admin` obrigatória |
+| Parâmetros | — |
+| Resposta 200 | Lista de `UserSummaryDto` — contas **não aprovadas primeiro**, depois as mais recentes |
+| Resposta 401 | Token ausente/inválido |
+| Resposta 403 | Usuário autenticado não tem role `Admin` |
+
+```jsonc
+// UserSummaryDto
+{
+  "id": "uuid",
+  "username": "string",
+  "email": "string",
+  "role": "User | Admin",
+  "isEmailConfirmed": true,
+  "isApprovedByAdmin": false,
+  "createdAt": "datetime (UTC)"
+}
+```
+
+> `PasswordHash`, `RefreshToken` e `RefreshTokenExpiryTime` ficam fora da
+> projeção — essas colunas nem são lidas do banco.
+
 ### `POST /api/admin/users/{id}/approve`
 
 | Item | Detalhe |
