@@ -55,6 +55,25 @@ export function me(): Promise<Session> {
   });
 }
 
+/**
+ * Confirma o e-mail do cadastro.
+ *
+ * Rota publica: quem clica no link de confirmacao ainda nao tem sessao.
+ *
+ * Aviso de contrato: hoje a API aceita so' o e-mail, sem token nenhum —
+ * ou seja, qualquer um confirma o e-mail de qualquer um, e nenhum e-mail
+ * e' realmente enviado. Esta' anotado no README como pendencia do
+ * servidor; do lado de ca' nao da' pra consertar.
+ */
+export function confirmEmail(email: string): Promise<{ message: string }> {
+  return request('/auth/confirm-email', {
+    method: 'POST',
+    body: { email: email.trim() },
+    schema: z.object({ message: z.string() }).strict(),
+    skipSessionDrop: true,
+  });
+}
+
 export function logout(): Promise<undefined> {
   return request('/auth/logout', {
     method: 'POST',

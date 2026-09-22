@@ -11,6 +11,7 @@ const PostPage = lazy(() => import('./pages/PostPage'));
 const NewPostPage = lazy(() => import('./pages/NewPostPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const PendingPage = lazy(() => import('./pages/PendingPage'));
 const LinksPage = lazy(() => import('./pages/LinksPage'));
 const PhotosPage = lazy(() => import('./pages/PhotosPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
@@ -30,6 +31,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/cadastro" element={<RegisterPage />} />
+          <Route path="/conta-pendente" element={<PendingPage />} />
 
           {/*
             Tudo que lê dado da cúpula fica atrás do login: o backend exige

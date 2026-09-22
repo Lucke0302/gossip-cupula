@@ -87,11 +87,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [adopt],
   );
 
+  /**
+   * Cadastra — e NAO entra.
+   *
+   * A API devolve um token no register, mas o login so' libera depois de
+   * e-mail confirmado E aprovacao de admin. Aproveitar esse token pra
+   * deixar a pessoa navegando seria mentira de curto prazo: na proxima
+   * visita ela levaria "aguardando aprovacao" sem entender por que.
+   * Entao a sessao recem-criada e' descartada na hora e a tela manda pro
+   * aviso de conta pendente.
+   */
   const register = useCallback(
     async (input: RegisterInput) => {
-      adopt(await authService.register(input));
+      await authService.register(input);
+      try {
+        await authService.logout();
+      } finally {
+        dropSession();
+      }
     },
-    [adopt],
+    [dropSession],
   );
 
   const logout = useCallback(async () => {

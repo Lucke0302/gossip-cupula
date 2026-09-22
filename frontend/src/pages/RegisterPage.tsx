@@ -28,8 +28,10 @@ export default function RegisterPage() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       await signUp(values);
-      push('bem-vinda à cúpula. comporte-se mal.', 'success');
-      navigate('/', { replace: true });
+      // Cadastro não entra: a conta nasce pendente de confirmação de
+      // e-mail e de aprovação. O e-mail viaja no state da rota, não na
+      // URL — endereço pessoal não vai em query string.
+      navigate('/conta-pendente', { replace: true, state: { email: values.email.trim() } });
     } catch (error) {
       push(messageFor(error), 'error');
     }

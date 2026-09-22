@@ -155,6 +155,16 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   },
   {
     method: 'POST',
+    pattern: /^\/auth\/confirm-email$/,
+    handler: (_init) => {
+      const { email } = parseBody<{ email?: string }>(_init);
+      if (!email?.includes('@')) return fail(400, 'e-mail inválido');
+      // Como na API: nenhum e-mail sai, so' marca como confirmado.
+      return json({ message: 'E-mail confirmado com sucesso.' });
+    },
+  },
+  {
+    method: 'POST',
     pattern: /^\/auth\/logout$/,
     handler: () => {
       writeSession(null);
