@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { handleApiRequest } from '../server/session-proxy';
+import { handleApiRequest } from '../server/session-proxy.js';
 
 /**
  * Entrada da Vercel para tudo que bate em /api.
