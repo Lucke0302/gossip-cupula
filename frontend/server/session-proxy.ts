@@ -38,6 +38,7 @@ type Session = {
   r: 'user' | 'admin';
 };
 
+
 function apiBase(): string {
   const raw = process.env.API_PROXY_TARGET || 'http://147.15.112.97:8080';
   return raw.replace(/\/+$/, '');
@@ -302,7 +303,12 @@ export async function handleApiRequest(
   res: ServerResponse,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost');
-  const path = url.pathname.replace(/\/+$/, '') || '/';
+  let path = url.pathname.replace(/\/+$/, '') || '/';
+
+  if (!path.startsWith('/api')) {
+    path = path.startsWith('/') ? `/api${path}` : `/api/${path}`;
+  }
+
   const method = (req.method ?? 'GET').toUpperCase();
 
   try {
