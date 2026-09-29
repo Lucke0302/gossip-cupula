@@ -239,7 +239,75 @@ Todos os endpoints de posts e votos exigem **`[Authorize]`** (header
 
 ---
 
-## 5. Hub SignalR — `GossipHub`
+## 5. Comentários — `CommentController` (base `/api/posts/{postId}/comments`)
+
+Comentários são **100% anônimos**, igual aos posts: a tabela `Comments` não
+tem `UserId`, `AuthorId` nem FK para `Users` — o banco não registra quem
+escreveu. Só existem texto, post e instante de criação. O token do usuário
+serve apenas para autorizar a requisição.
+
+### `POST /api/posts/{postId}/comments`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Parâmetros | `postId` — `Guid` (rota) |
+| Body (entrada) | `CreateCommentRequest` — `text` (obrigatório; não pode ser vazio nem só espaços; máx. 500) |
+| Resposta 201 | `CommentResponse` criado (sem header `Location`: não existe rota de comentário isolado) |
+| Resposta 400 | Validação do body falhou |
+| Resposta 401 | Token ausente/inválido |
+| Resposta 404 | Post inexistente |
+
+```jsonc
+// request
+{ "text": "soltei o babado" }
+```
+
+### `GET /api/posts/{postId}/comments`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Parâmetros | `postId` — `Guid` (rota); `cursor` — query, opaco, opcional (vem de `nextCursor`); `limit` — query, 1–100, padrão 20 |
+| Resposta 200 | `Page<CommentResponse>` — `{ items, nextCursor }`, **mais recentes primeiro** |
+| Resposta 401 | Token ausente/inválido |
+
+```jsonc
+// 200
+{
+  "items": [
+    { "id": "uuid", "text": "string", "publishedAt": "2026-09-29T17:00:00Z" }
+  ],
+  "nextCursor": "base64url | null"
+}
+```
+
+**Regras de negócio e de contrato:**
+
+- **Anonimato no dado, não só na tela:** nenhum campo de autor existe na
+  tabela, no DTO ou na resposta. Quem está logado é apenas autorizado.
+- **`publishedAt` vem arredondado para a hora cheia em UTC** (minutos,
+  segundos e milissegundos zerados). É regra de anonimato: um instante com
+  precisão de segundos cruzado com o horário de acesso denunciaria quem
+  comentou. O `CreatedAt` gravado mantém a precisão completa — o
+  arredondamento acontece só na resposta.
+- **Paginação por cursor (keyset), nunca offset**: `ORDER BY CreatedAt DESC,
+  Id DESC` (o `Id` desempata comentários gravados no mesmo instante). O
+  `nextCursor` é um base64url opaco do par `(CreatedAt, Id)` do último item;
+  um cursor inválido é ignorado e a listagem recomeça do topo.
+- **Post inexistente no `GET` devolve 200 com `items: []`** — a listagem não
+  valida a existência do post, apenas filtra por `PostId`.
+- **Excluir o post apaga os comentários em cascata** (`ON DELETE CASCADE`).
+
+> **Contrato fechado com o front:** `frontend/src/types/index.ts` valida as
+> respostas com `commentSchema` e `pageSchema`, ambos `.strict()`. Campo novo
+> na resposta (`postId`, `createdAt`, autor...) **quebra** a validação com
+> `unrecognized_keys` — por isso a resposta tem exatamente `id`, `text` e
+> `publishedAt`, e a página exatamente `items` e `nextCursor`.
+
+---
+
+## 6. Hub SignalR — `GossipHub`
 
 | Item | Detalhe |
 |------|---------|
@@ -266,7 +334,7 @@ connection.start();
 
 ---
 
-## 6. Estrutura dos DTOs de resposta
+## 7. Estrutura dos DTOs de resposta
 
 ### `PostResponseDto`
 
@@ -310,6 +378,14 @@ connection.start();
 
 ## Observações
 
+- **Comentários são anônimos por construção:** a tabela `Comments` não tem
+  `UserId`, `AuthorId` nem FK para `Users` — nem existe rota para editar ou
+  excluir um comentário.
+- **Os schemas do front são `.strict()`:** qualquer campo novo em
+  `CommentResponse`, `CommentResponsePage` ou `PostResponseDto` (por exemplo,
+  um `commentCount` no post) derruba a validação Zod do cliente com
+  `unrecognized_keys`. Mudança de contrato exige atualizar
+  `frontend/src/types/index.ts` junto.
 - As rotas usam a restrição `{id:guid}` — valores fora do formato `Guid` não
   casam e resultam em resposta de rota não encontrada (ASP.NET Core).
 - **Blindagem de dados:** todos os controllers de dados (`PostController`,

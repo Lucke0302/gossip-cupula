@@ -23,7 +23,6 @@ const commentPageSchema = pageSchema(commentSchema);
 export function listComments(postId: string, signal?: AbortSignal): Promise<Page<Comment>> {
   return request(`/posts/${encodeURIComponent(postId)}/comments`, {
     schema: commentPageSchema,
-    source: 'mock',
     signal,
   });
 }
@@ -33,6 +32,5 @@ export function createComment(postId: string, input: CreateCommentInput): Promis
     method: 'POST',
     body: { text: input.text },
     schema: commentSchema,
-    source: 'mock',
   });
 }

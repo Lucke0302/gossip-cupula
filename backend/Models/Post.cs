@@ -26,6 +26,12 @@ public class Post
     public Guid? EditedBy { get; set; }
 
     public ICollection<PostVote> Votes { get; set; } = new List<PostVote>();
+
+    /// <summary>
+    /// Comentários do post (1:N). Também são 100% anônimos: não existe
+    /// relação nenhuma entre um comentário e a tabela de usuários.
+    /// </summary>
+    public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 }
 
 

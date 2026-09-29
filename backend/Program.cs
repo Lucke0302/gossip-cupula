@@ -38,7 +38,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "GossipCupula.Api",
         Version = "v1",
-        Description = "API backend do blog/rede social estilo Gossip Girl (Auth, Posts, Votos e SignalR)."
+        Description = "API backend do blog/rede social estilo Gossip Girl (Auth, Posts, Comentários, Votos e SignalR)."
     });
 
     // Habilita o botão "Authorize" no Swagger UI para inserir o token JWT,
@@ -72,6 +72,9 @@ builder.Services.AddScoped<IPostService, PostService>();
 
 // Registra o serviço de votos (Scoped: uma instância por request).
 builder.Services.AddScoped<IVoteService, VoteService>();
+
+// Registra o serviço de comentários (Scoped: uma instância por request).
+builder.Services.AddScoped<ICommentService, CommentService>();
 
 // HttpClient nomeado usado pelo PostService para o webhook do bot Bostossauro.
 builder.Services.AddHttpClient("BostossauroWebhook")

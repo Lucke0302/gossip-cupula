@@ -11,6 +11,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<PostVote> PostVotes => Set<PostVote>();
 
+    public DbSet<Comment> Comments => Set<Comment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -104,6 +106,32 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                   .WithMany(u => u.Votes)
                   .HasForeignKey(pv => pv.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Comment>(entity =>
+        {
+            entity.ToTable("Comments");
+            entity.HasKey(c => c.Id);
+
+            entity.Property(c => c.Text)
+                  .IsRequired()
+                  .HasMaxLength(500);
+
+            entity.Property(c => c.CreatedAt)
+                  .HasColumnType(timestampWithTimeZone);
+
+            // Comentários são 100% anônimos: NÃO existe FK para User
+            // (nenhum UserId/AuthorId/Owner é gravado).
+            //
+            // FK: Comment -> Post (1:N). Excluir o post exclui os comentários.
+            entity.HasOne(c => c.Post)
+                  .WithMany(p => p.Comments)
+                  .HasForeignKey(c => c.PostId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Sustenta a listagem paginada: WHERE PostId = @id
+            // ORDER BY CreatedAt DESC, Id DESC.
+            entity.HasIndex(c => new { c.PostId, c.CreatedAt, c.Id });
         });
     }
 }

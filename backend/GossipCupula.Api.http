@@ -1,4 +1,6 @@
 @GossipCupula.Api_HostAddress = http://localhost:5195
+@token = COLE_O_TOKEN_JWT_AQUI
+@postId = 00000000-0000-0000-0000-000000000000
 
 POST {{GossipCupula.Api_HostAddress}}/api/auth/register
 Content-Type: application/json
@@ -18,5 +20,27 @@ Content-Type: application/json
   "email": "dan.humphrey@example.com",
   "password": "senhaSegura123"
 }
+
+###
+
+# Comentários são 100% anônimos: o corpo leva só o texto (nada de autor).
+POST {{GossipCupula.Api_HostAddress}}/api/posts/{{postId}}/comments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "text": "soltei o babado primeiro"
+}
+
+###
+
+GET {{GossipCupula.Api_HostAddress}}/api/posts/{{postId}}/comments?limit=20
+Authorization: Bearer {{token}}
+
+###
+
+# Página seguinte: o cursor é o nextCursor devolvido na resposta anterior.
+GET {{GossipCupula.Api_HostAddress}}/api/posts/{{postId}}/comments?limit=20&cursor=COLE_O_NEXTCURSOR_AQUI
+Authorization: Bearer {{token}}
 
 ###
