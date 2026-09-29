@@ -24,19 +24,25 @@ export function CommentForm({ postId }: { postId: string }) {
     defaultValues: { text: '' },
   });
 
-  const onSubmit = handleSubmit(async (values) => {
-    const text = values.text;
-    reset({ text: '' });
-    try {
-      await mutation.mutateAsync({ text });
-      push('soltou. ninguém vai saber que foi você.', 'success');
-    } catch (error) {
-      // O rollback ja aconteceu no onError da mutation; aqui a gente so
-      // devolve o texto pra pessoa nao perder o que escreveu.
-      reset({ text });
-      push(messageFor(error), 'error');
+  const onSubmit = handleSubmit(
+    // Função de Sucesso (Passou no Zod)
+    async (values) => {
+      console.log("✅ Passou no Zod, vai tentar enviar:", values);
+      const text = values.text;
+      reset({ text: '' });
+      try {
+        await mutation.mutateAsync({ text });
+        push('soltou. ninguém vai saber que foi você.', 'success');
+      } catch (error) {
+        reset({ text });
+        push(messageFor(error), 'error');
+      }
+    },
+    // Função de Erro (Zod barrou)
+    (errors) => {
+      console.log("❌ O Zod não deixou o form ser enviado. Erros:", errors);
     }
-  });
+  );
 
   return (
     <form onSubmit={onSubmit} className="mt-3.5">
