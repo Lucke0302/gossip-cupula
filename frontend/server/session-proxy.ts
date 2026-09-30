@@ -10,7 +10,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
  *      num cookie HttpOnly — o JavaScript da página nunca os vê;
  *   2. nas demais chamadas, lê esse cookie e monta o
  *      `Authorization: Bearer` do lado do servidor;
- *   3. renova o access token sozinho quando ele está pra vencer.
+ *   3. renova o access token sozinho quando ele está pra vencer;
+ *   4. repassa o corpo da requisição sem tocar nele quando ele não é JSON
+ *      (multipart/form-data do `POST /api/posts`, por exemplo).
  *
  * Resultado: um XSS na página não consegue roubar a sessão, que é a
  * proteção que a API não oferece sozinha (ela devolve os tokens no corpo
@@ -108,6 +110,65 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
   }
 }
 
+/**
+ * Corpo que segue para a API — e o formato em que ele tem que chegar lá.
+ *
+ * `json` é o caso comum: o proxy lê, mexe se precisar e reescreve. `raw`
+ * existe para `multipart/form-data` (o upload de imagem do `POST /api/posts`):
+ * nesse formato o corpo, o `boundary` e os nomes dos campos são do navegador,
+ * e reescrever isso como JSON aqui destrói o formulário. A API recebe o
+ * request sem campo nenhum e responde 400 ("O texto é obrigatório.") — foi
+ * exatamente esse o caminho do bug. Em `raw` os bytes vão inteiros, com o
+ * `Content-Type` original (boundary incluído).
+ */
+type ForwardedBody =
+  | { kind: 'none' }
+  | { kind: 'json'; value: unknown }
+  | { kind: 'raw'; value: Buffer; contentType: string };
+
+const noBody: ForwardedBody = { kind: 'none' };
+
+const jsonBody = (value: unknown): ForwardedBody => ({ kind: 'json', value });
+
+/** Só JSON é reescrito: multipart, urlencoded e binário seguem crus. */
+function isJsonContentType(contentType: string): boolean {
+  const mediaType = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
+  return mediaType === 'application/json' || mediaType.endsWith('+json');
+}
+
+/**
+ * Lê o corpo cru do request, em bytes.
+ *
+ * Na Vercel o corpo pode chegar já materializado pela plataforma (string ou
+ * Buffer) e, no Vite, sempre pelo stream — os três casos cabem aqui.
+ */
+async function readRawBody(req: IncomingMessage): Promise<Buffer | undefined> {
+  const preloaded = (req as IncomingMessage & { body?: unknown }).body;
+  if (Buffer.isBuffer(preloaded)) return preloaded;
+  if (typeof preloaded === 'string' && preloaded.length > 0) {
+    return Buffer.from(preloaded, 'utf8');
+  }
+
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  return chunks.length === 0 ? undefined : Buffer.concat(chunks);
+}
+
+/** Decide o caminho do corpo: JSON é lido; o resto atravessa cru. */
+async function readForwardBody(req: IncomingMessage): Promise<ForwardedBody> {
+  if (req.method === 'GET' || req.method === 'DELETE') return noBody;
+
+  const contentType = String(req.headers['content-type'] ?? '');
+
+  if (contentType && !isJsonContentType(contentType)) {
+    const raw = await readRawBody(req);
+    return raw === undefined ? noBody : { kind: 'raw', value: raw, contentType };
+  }
+
+  const value = await readBody(req);
+  return value === undefined ? noBody : jsonBody(value);
+}
+
 /** Lê o `exp` do JWT sem validar assinatura — quem valida é a API. */
 function expiresAt(jwt: string): number {
   try {
@@ -146,16 +207,28 @@ function toSession(payload: AuthResponse): Session | null {
 
 async function callApi(
   path: string,
-  init: { method: string; body?: unknown; token?: string },
+  init: { method: string; body?: ForwardedBody; token?: string },
 ): Promise<{ status: number; payload: unknown }> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (init.body !== undefined) headers['Content-Type'] = 'application/json';
   if (init.token) headers.Authorization = `Bearer ${init.token}`;
+
+  const body = init.body ?? noBody;
+  let requestBody: BodyInit | undefined;
+
+  if (body.kind === 'json') {
+    headers['Content-Type'] = 'application/json';
+    requestBody = JSON.stringify(body.value);
+  } else if (body.kind === 'raw') {
+    // O Content-Type original, com o boundary, é o que deixa a API ler o
+    // formulário. `Buffer` é `Uint8Array`: o fetch do Node embarca direto.
+    headers['Content-Type'] = body.contentType;
+    requestBody = body.value as unknown as BodyInit;
+  }
 
   const response = await fetch(`${apiBase()}${path}`, {
     method: init.method,
     headers,
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    body: requestBody,
   });
 
   const text = await response.text();
@@ -182,7 +255,7 @@ async function callApi(
 async function refresh(session: Session): Promise<Session | null> {
   const { status, payload } = await callApi('/api/Auth/refresh', {
     method: 'POST',
-    body: { accessToken: session.at, refreshToken: session.rt },
+    body: jsonBody({ accessToken: session.at, refreshToken: session.rt }),
   });
   if (status !== 200) return null;
 
@@ -200,7 +273,7 @@ async function handleLogin(
   path: '/api/Auth/login' | '/api/Auth/register',
 ): Promise<void> {
   const body = (await readBody(req)) as Record<string, unknown> | undefined;
-  const { status, payload } = await callApi(path, { method: 'POST', body: body ?? {} });
+  const { status, payload } = await callApi(path, { method: 'POST', body: jsonBody(body ?? {}) });
 
   if (status !== 200 && status !== 201) {
     clearSession(req, res);
@@ -260,7 +333,8 @@ async function handleProxied(
     rotated = true;
   }
 
-  const body = req.method === 'GET' || req.method === 'DELETE' ? undefined : await readBody(req);
+  // Multipart vai cru (bytes + Content-Type original); o resto é JSON.
+  const body = await readForwardBody(req);
 
   let result = await callApi(pathWithQuery, {
     method: req.method ?? 'GET',
@@ -334,7 +408,7 @@ export async function handleApiRequest(
       const body = await readBody(req);
       const result = await callApi('/api/Auth/confirm-email', {
         method: 'POST',
-        body: body ?? {},
+        body: jsonBody(body ?? {}),
       });
       json(res, result.status, result.payload ?? {});
       return;

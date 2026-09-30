@@ -232,6 +232,12 @@ No multipart, o `Content-Type` é omitido de propósito: só o navegador sabe o
 `boundary` que separa os campos, e escrever o header à mão deixa a requisição
 sem ele — a API recebe o texto vazio.
 
+O mesmo vale do outro lado: o proxy repassa o corpo **cru** quando ele não é
+JSON. Ele só lê e reescreve `application/json`; `multipart/form-data` atravessa
+byte a byte, com o `Content-Type` original (boundary incluído). Decodificar o
+formulário ali e reenviar como JSON apaga os campos — a API recebe o request sem
+`Text` e responde 400 ("O texto é obrigatório.").
+
 Comentários, fotos e links passam `source: 'mock'`, o que força a camada falsa
 mesmo com a API ligada — sem isso essas telas levariam 404. Quando as rotas
 existirem, é só tirar o `source`.
