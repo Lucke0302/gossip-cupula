@@ -79,6 +79,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             entity.Property(p => p.EditedAt)
                   .HasColumnType(timestampWithTimeZone);
+
+            // Imagens do post. O Npgsql mapeia List<string> para o array
+            // nativo "text[]" do PostgreSQL — sem tabela auxiliar.
+            //
+            // NOT NULL + DEFAULT '{}': a migração é aditiva e não pode quebrar
+            // quando a tabela já tem posts (ALTER TABLE ... ADD "ImageUrls"
+            // text[] NOT NULL sem default falharia em tabela populada).
+            entity.Property(p => p.ImageUrls)
+                  .HasColumnType("text[]")
+                  .IsRequired()
+                  .HasDefaultValueSql("ARRAY[]::text[]");
+
             // Posts são 100% anônimos: não existe mais FK para User (Owner).
         });
 

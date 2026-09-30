@@ -15,6 +15,13 @@ public interface IPostService
     Task<PostResponseDto> CreateAsync(CreatePostDto createPostDto);
 
     /// <summary>
+    /// Publica um post recebido por <c>multipart/form-data</c> (texto +
+    /// imagens opcionais). Sobe as imagens para o object storage em paralelo
+    /// e grava o post com as URLs públicas resolvidas.
+    /// </summary>
+    Task<PostResponseDto> CreateAsync(CreatePostFormRequest formRequest);
+
+    /// <summary>
     /// Atualiza o post. Apenas usuários com role "Admin" podem editar;
     /// currentUserId é usado apenas para auditar EditedBy.
     /// </summary>

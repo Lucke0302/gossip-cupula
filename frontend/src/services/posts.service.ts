@@ -81,13 +81,10 @@ export function votePost(id: string, voteType: VoteValue): Promise<VoteResult> {
 export function createPost(input: CreatePostInput): Promise<PostDetail> {
   if (!USE_MOCKS) return live.createPost(input);
 
+  // Mesmo multipart da API real — o mock le o formulario, nao um JSON.
   return request('/posts', {
     method: 'POST',
-    body: {
-      title: input.title,
-      content: input.content,
-      imageDataUrl: input.imageDataUrl,
-    },
+    body: live.buildCreatePostForm(input),
     schema: postDetailSchema,
   });
 }

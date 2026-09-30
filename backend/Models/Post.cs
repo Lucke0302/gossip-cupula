@@ -25,6 +25,16 @@ public class Post
     /// </summary>
     public Guid? EditedBy { get; set; }
 
+    /// <summary>
+    /// URLs públicas das imagens anexadas ao post, na ordem de exibição.
+    /// <para>
+    /// O Npgsql mapeia <c>List&lt;string&gt;</c> nativamente para a coluna
+    /// <c>text[]</c> do PostgreSQL (primitiva collection): não existe tabela
+    /// auxiliar, tabela de imagens nem JSON — é um array de textos no banco.
+    /// </para>
+    /// </summary>
+    public List<string> ImageUrls { get; set; } = new();
+
     public ICollection<PostVote> Votes { get; set; } = new List<PostVote>();
 
     /// <summary>

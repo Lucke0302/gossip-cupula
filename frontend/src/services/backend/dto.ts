@@ -30,6 +30,10 @@ export const backendPostSchema = z
     editedBy: z.string().uuid().nullable(),
     likesCount: z.number().int(),
     dislikesCount: z.number().int(),
+    /** URLs publicas das fotos. Lista vazia quando o post nao tem foto. */
+    imageUrls: z.array(z.string()),
+    /** COUNT projetado no mesmo SELECT da lista de posts. */
+    commentCount: z.number().int().min(0)
   })
   .strict();
 
@@ -137,11 +141,8 @@ export function toPost(dto: BackendPost): Post {
     id: dto.id,
     title: dto.title ?? 'sem manchete',
     excerpt: resumo(corpo),
-    // A API não tem campo de imagem. Foto anexada ainda não trafega.
-    imageUrl: null,
-    imageAlt: null,
-    // A API não tem comentários. Fica em zero até as rotas existirem.
-    commentCount: 0,
+    imageUrls: dto.imageUrls,
+    commentCount: dto.commentCount,
     likes: dto.likesCount,
     dislikes: dto.dislikesCount,
     publishedAt: horaCheia(dto.createdAt),
@@ -156,9 +157,8 @@ export function toPostDetail(dto: BackendPost): PostDetail {
     id: dto.id,
     title: dto.title ?? 'sem manchete',
     excerpt: resumo(corpo),
-    imageUrl: null,
-    imageAlt: null,
-    commentCount: 0,
+    imageUrls: dto.imageUrls,
+    commentCount: dto.commentCount,
     likes: dto.likesCount,
     dislikes: dto.dislikesCount,
     publishedAt: horaCheia(dto.createdAt),

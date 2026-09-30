@@ -30,6 +30,22 @@ public class PostResponseDto
     public Guid? EditedBy { get; set; }
 
     /// <summary>
+    /// URLs públicas das imagens anexadas (bucket do OCI Object Storage).
+    /// Lista vazia quando o post não tem foto — nunca <c>null</c>.
+    /// </summary>
+    public List<string> ImageUrls { get; set; } = new();
+
+    /// <summary>
+    /// Quantidade de comentários do post.
+    /// <para>
+    /// Vem projetada na própria consulta (COUNT correlacionado no mesmo
+    /// SELECT): a lista de posts inteira custa uma query só, e não uma query
+    /// por post (N+1).
+    /// </para>
+    /// </summary>
+    public int CommentCount { get; set; }
+
+    /// <summary>
     /// Quantidade de likes (votos com VoteType == 1).
     /// </summary>
     public int LikesCount { get; set; }

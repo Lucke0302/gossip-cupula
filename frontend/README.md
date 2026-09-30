@@ -189,8 +189,13 @@ de uso único enviado por e-mail.
 | -------------------- | -------------------------------------------------------------------- |
 | comentários          | `/posts/{id}/comments` (GET/POST) não existe — o front usa mocks     |
 | fotos e links        | `/photos` e `/links` não existem — idem                              |
-| imagem no post       | `CreatePostDto` só tem `title` e `content`. **A foto anexada não é publicada**: a pessoa vê a prévia e ela não sai do navegador |
 | paginação            | `GET /posts` devolve o array inteiro; a fatia é feita no cliente     |
+
+**Imagem no post já existe.** `POST /api/posts` recebe `multipart/form-data`
+(`Text` obrigatório, `Title` opcional e `Images` com zero a dez arquivos de até
+10 MB), e `PostResponseDto` devolve `imageUrls` e `commentCount`. Se o upload de
+qualquer foto falhar, a API responde **502 e não grava o post** — o front mostra
+o erro em vez de inventar sucesso.
 
 ### 5. Infraestrutura
 
@@ -220,8 +225,12 @@ api/[...path].ts         casca da Vercel
 ```
 
 Nenhum componente ou hook chama `fetch` direto. Tudo passa por `request()`, que
-centraliza baseURL, `credentials`, headers, serialização, tratamento de erro e
-validação Zod.
+centraliza baseURL, `credentials`, headers, serialização (JSON **ou**
+`FormData`), tratamento de erro e validação Zod.
+
+No multipart, o `Content-Type` é omitido de propósito: só o navegador sabe o
+`boundary` que separa os campos, e escrever o header à mão deixa a requisição
+sem ele — a API recebe o texto vazio.
 
 Comentários, fotos e links passam `source: 'mock'`, o que força a camada falsa
 mesmo com a API ligada — sem isso essas telas levariam 404. Quando as rotas
@@ -238,7 +247,7 @@ existirem, é só tirar o `source`.
 | `POST` | `/auth/logout`        | limpa o cookie; a API não tem logout                        |
 | `GET`  | `/posts`              | `GET /api/posts` → traduzido e paginado no cliente          |
 | `GET`  | `/posts/:id`          | `GET /api/posts/{id}` → traduzido                           |
-| `POST` | `/posts`              | `POST /api/posts` com `{ title, content }`                  |
+| `POST` | `/posts`              | `POST /api/posts` em `multipart/form-data` (`Text`, `Title`, `Images`) |
 | —      | comentários, fotos, links | mocks                                                   |
 
 O formato exato de cada tipo está em `src/types/index.ts` — os schemas Zod

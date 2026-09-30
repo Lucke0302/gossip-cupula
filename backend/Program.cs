@@ -76,6 +76,11 @@ builder.Services.AddScoped<IVoteService, VoteService>();
 // Registra o serviço de comentários (Scoped: uma instância por request).
 builder.Services.AddScoped<ICommentService, CommentService>();
 
+// Registra o serviço de storage (OCI Object Storage). Singleton de propósito:
+// o ObjectStorageClient é caro de criar, é thread-safe e resolve as
+// credenciais (Instance Principals) uma única vez para toda a aplicação.
+builder.Services.AddSingleton<IStorageService, OciStorageService>();
+
 // HttpClient nomeado usado pelo PostService para o webhook do bot Bostossauro.
 builder.Services.AddHttpClient("BostossauroWebhook")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(10));

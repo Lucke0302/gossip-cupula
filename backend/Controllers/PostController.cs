@@ -15,6 +15,13 @@ namespace GossipCupula.Api.Controllers;
 [Route("api/posts")]
 public class PostController : ControllerBase
 {
+    /// <summary>
+    /// Teto do request multipart inteiro (texto + imagens): 6x o limite de
+    /// uma imagem, para caber o lote máximo com folga. Sem isso, o limite
+    /// padrão do Kestrel (30 MB) cortaria um post com três fotos de 10 MB.
+    /// </summary>
+    private const long MaxMultipartRequestBytes = 60L * 1024 * 1024;
+
     private readonly IPostService _postService;
     private readonly IVoteService _voteService;
 
@@ -39,6 +46,46 @@ public class PostController : ControllerBase
     }
 
     [HttpPost]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(MaxMultipartRequestBytes)]
+    [ProducesResponseType(typeof(PostResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    public async Task<ActionResult<PostResponseDto>> CreateWithImages([FromForm] CreatePostFormRequest formRequest)
+    {
+        try
+        {
+            // Todo post é 100% anônimo ("Gossip Girl") — não há dono.
+            var created = await _postService.CreateAsync(formRequest);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (StorageUploadException ex)
+        {
+            // O object storage recusou o arquivo: o problema é de
+            // infraestrutura (502), não do payload — e nada foi gravado.
+            return Problem(
+                detail: ex.Message,
+                title: "Falha no upload da imagem.",
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+    }
+
+    /// <summary>
+    /// Publica um post sem imagens pelo contrato antigo
+    /// (<c>application/json</c>: <c>title</c> + <c>content</c>).
+    /// <para>
+    /// Fica em <c>/api/posts/json</c> porque o Swashbuckle não aceita duas
+    /// actions no mesmo método+path — e a rota principal
+    /// (<c>POST /api/posts</c>) agora é <c>multipart/form-data</c>. Existe
+    /// para não quebrar quem já publica por JSON.
+    /// </para>
+    /// </summary>
+    [HttpPost("json")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(PostResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<PostResponseDto>> Create([FromBody] CreatePostDto createPostDto)
     {
         // Todo post é 100% anônimo ("Gossip Girl") — não há dono.

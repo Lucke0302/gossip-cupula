@@ -24,4 +24,10 @@ public interface ICommentService
     /// antigos, paginada por cursor opaco.
     /// </summary>
     Task<Page<CommentResponse>> GetPageAsync(Guid postId, string? cursor, int limit);
+
+    /// <summary>
+    /// Quantidade de comentários do post — um <c>COUNT</c> direto no banco,
+    /// sem materializar comentário nenhum.
+    /// </summary>
+    Task<int> CountAsync(Guid postId);
 }

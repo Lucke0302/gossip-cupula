@@ -38,8 +38,19 @@ export const postSchema = z
     id: opaqueIdSchema,
     title: z.string().min(1).max(200),
     excerpt: z.string(),
-    imageUrl: z.string().url().nullable(),
-    imageAlt: z.string().nullable(),
+    /*
+     * Fotos do post: LISTA de URLs publicas (bucket do OCI), nunca null —
+     * lista vazia quando o post nao tem foto. Ja' existiu aqui um
+     * `imageUrl` singular; o contrato novo so' conhece array, entao o
+     * campo antigo saiu em vez de virar um segundo jeito de dizer a
+     * mesma coisa.
+     */
+    imageUrls: z.array(z.string()),
+    /*
+     * Quantidade de comentarios. Vem projetada no proprio post (COUNT no
+     * mesmo SELECT da API), entao o feed mostra o numero certo sem
+     * carregar a lista de comentarios de cada post.
+     */
     commentCount: z.number().int().nonnegative(),
     /*
      * Contagens agregadas. Sao so' numeros: a API nunca diz QUEM votou, e
@@ -156,6 +167,15 @@ export const POST_TITLE_MIN = 4;
 export const POST_CONTENT_MIN = 10;
 export const POST_CONTENT_MAX = 1200;
 
+/**
+ * Quantas fotos cabem num post.
+ *
+ * Dez e' o teto do backend (`CreatePostFormRequest.MaxImages`). Passar
+ * disso faz o servidor recusar o request inteiro, entao o formulario
+ * corta antes — validacao no cliente e' conveniencia, nao seguranca.
+ */
+export const MAX_POST_IMAGES = 10;
+
 export const createPostSchema = z.object({
   title: z
     .string()
@@ -167,7 +187,16 @@ export const createPostSchema = z.object({
     .trim()
     .min(POST_CONTENT_MIN, `o babado precisa de pelo menos ${POST_CONTENT_MIN} caracteres`)
     .max(POST_CONTENT_MAX, `o babado cabe em ${POST_CONTENT_MAX} caracteres`),
-  imageDataUrl: z.string().nullable().default(null),
+  /*
+   * Arquivos escolhidos no formulario. Sao `File` de verdade, e nao data
+   * URL: quem viaja pro servidor e' o arquivo cru, dentro de um
+   * multipart/form-data. O reencode no canvas (NewPostPage) acontece
+   * antes de entrar aqui, entao o que sobe ja' perdeu o EXIF.
+   */
+  images: z
+    .array(z.instanceof(File))
+    .max(MAX_POST_IMAGES, `no máximo ${MAX_POST_IMAGES} fotos por post`)
+    .default([]),
 });
 
 export const createCommentSchema = z.object({

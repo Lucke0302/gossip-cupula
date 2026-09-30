@@ -22,7 +22,9 @@ Documentação das rotas atuais da API (backend .NET 10). Base de URL local:
 | 403 | Autenticado, porém sem permissão (não é Owner e não é Admin) |
 | 404 | Recurso não encontrado |
 
-DTOs são recebidos via `application/json` (`[FromBody]`). Erros de validação
+DTOs são recebidos via `application/json` (`[FromBody]`) — exceto o
+`POST /api/posts`, que recebe `multipart/form-data` (`[FromForm]`, texto +
+arquivos). Erros de validação
 do `[ApiController]` seguem o formato `ProblemDetails`.
 
 ---
@@ -174,19 +176,55 @@ Todos os endpoints de posts e votos exigem **`[Authorize]`** (header
 
 | Item | Detalhe |
 |------|---------|
-| Autenticação | ✅ Sim (Owner = usuário do token) |
-| Body (entrada) | `CreatePostDto` — `title` (obrigatório, máx. 200), `content` (obrigatório) |
+| Autenticação | ✅ Sim (post continua 100% anônimo — o token só autoriza) |
+| Content-Type | `multipart/form-data` (formulário + arquivos) |
+| Body (entrada) | `CreatePostFormRequest` — `text` (obrigatório; vira o `content` do post), `title` (opcional, máx. 200; quando ausente o título é derivado da 1ª linha do texto) e `images` (zero a 10 arquivos `image/*`) |
+| Limites | 10 MB por imagem; 60 MB por request; JPEG/PNG/WEBP/GIF |
 | Resposta 201 | `PostResponseDto` criado (header `Location: /api/posts/{id}`) |
-| Resposta 400 | Validação do body falhou |
+| Resposta 400 | Validação falhou (texto vazio, imagem vazia/grande demais ou tipo não aceito) |
 | Resposta 401 | Token ausente/inválido |
+| Resposta 502 | Upload no OCI Object Storage falhou (nada é gravado) |
+
+```http
+POST /api/posts
+Authorization: Bearer {token}
+Content-Type: multipart/form-data; boundary=----Gossip
+
+------Gossip
+Content-Disposition: form-data; name="text"
+
+o babado agora tem foto
+------Gossip
+Content-Disposition: form-data; name="images"; filename="babado.png"
+Content-Type: image/png
+
+<binário>
+------Gossip--
+```
+
+**Fluxo do upload:** cada imagem sobe **em paralelo** para o bucket do OCI
+Object Storage, com nome de objeto gerado no servidor
+(`{guid}.{ext}` — o nome original do arquivo nunca vai para o bucket). O post
+é gravado com o array de URLs públicas já resolvidas em `imageUrls`
+(`text[]` no PostgreSQL). Se qualquer upload falhar, o post **não** é criado
+(502) — URL quebrada no banco seria pior que post não publicado.
 
 > **Posts 100% anônimos:** todo post é criado **sem dono** e exibe
 > `ownerUsername = "Gossip Girl"`. Apenas usuários com role `Admin` podem
-> editá-lo ou excluí-lo.
+> editá-lo ou excluí-lo. O nome do arquivo enviado também é descartado
+> (`IMG_20260930_da_camila.png` vira `{guid}.png`): a URL é pública.
 
 **Efeitos colaterais** (após sucesso no banco):
 - Webhook do bot Bostossauro (fire-and-forget) com payload `{"message":"xoxo"}`.
-- Evento SignalR `ReceiveNewGossip` com o `PostResponseDto` para todos os clientes.
+- Evento SignalR `ReceiveNewGossip` com o `PostResponseDto` (já com
+  `imageUrls` e `commentCount`) para todos os clientes.
+
+### `POST /api/posts/json`
+
+Mesma criação, no contrato antigo (`application/json`: `title` + `content`),
+sem imagens. Fica em rota própria porque o Swashbuckle não aceita duas
+actions no mesmo método+path — a rota principal `POST /api/posts` agora é
+`multipart/form-data`. | Resposta 201 = `PostResponseDto`.
 
 ### `PUT /api/posts/{id}`
 
@@ -282,6 +320,31 @@ serve apenas para autorizar a requisição.
 }
 ```
 
+### `GET /api/posts/{postId}/comments/count`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Parâmetros | `postId` — `Guid` (rota) |
+| Resposta 200 | `CommentCountResponse` — `{ "count": 3 }` |
+| Resposta 401 | Token ausente/inválido |
+
+```jsonc
+// 200
+{ "count": 0 }
+```
+
+**Regras de contrato:**
+
+- É um `COUNT` no banco: nenhum comentário é lido, nenhum dado de autor
+  existe. Só o número — não é uma listagem disfarçada.
+- Rota isolada de propósito: o cartão do post precisa só do contador, e
+  carregar a página de comentários para contar sairia caro em banda e em
+  banco.
+- **Post inexistente devolve 200 com `count: 0`**, igual ao `GET` da
+  listagem: a rota não valida a existência do post, apenas filtra por
+  `PostId`.
+
 **Regras de negócio e de contrato:**
 
 - **Anonimato no dado, não só na tela:** nenhum campo de autor existe na
@@ -347,6 +410,10 @@ connection.start();
   "createdAt": "datetime (UTC)",
   "editedAt": "datetime (UTC) | null",
   "editedBy": "uuid | null",         // id do Admin que editou
+  "imageUrls": [                      // URLs públicas no OCI Object Storage
+    "https://objectstorage.sa-saopaulo-1.oraclecloud.com/n/{ns}/b/{bucket}/o/{guid}.png"
+  ],
+  "commentCount": 3,                  // COUNT projetado no mesmo SELECT
   "likesCount": 0,
   "dislikesCount": 0
 }
@@ -381,11 +448,19 @@ connection.start();
 - **Comentários são anônimos por construção:** a tabela `Comments` não tem
   `UserId`, `AuthorId` nem FK para `Users` — nem existe rota para editar ou
   excluir um comentário.
-- **Os schemas do front são `.strict()`:** qualquer campo novo em
-  `CommentResponse`, `CommentResponsePage` ou `PostResponseDto` (por exemplo,
-  um `commentCount` no post) derruba a validação Zod do cliente com
-  `unrecognized_keys`. Mudança de contrato exige atualizar
-  `frontend/src/types/index.ts` junto.
+- **Os schemas do front são `.strict()`:** `PostResponseDto` ganhou
+  `imageUrls` (array de URLs) e `commentCount` (inteiro) — os dois precisam
+  entrar em `frontend/src/services/backend/dto.ts` (`backendPostSchema`) e em
+  `frontend/src/types/index.ts`, senão a validação Zod do cliente quebra com
+  `unrecognized_keys` e a lista de posts some. `CommentResponse` e
+  `Page<CommentResponse>` **não** mudaram: o contador tem DTO próprio
+  (`CommentCountResponse`).
+- **Imagens (OCI Object Storage):** as fotos vão para um bucket público do
+  OCI via Instance Principals (nenhuma chave no servidor). Configuração
+  obrigatória em `appsettings` na seção `OCI` (`Namespace`, `BucketName`,
+  `Region`). Localmente, fora da OCI, o serviço cai para o
+  `~/.oci/config` do OCI CLI (`OCI:AuthMode = ConfigFile` força esse modo).
+  Sem configuração válida, o upload responde **502** — o post não é criado.
 - As rotas usam a restrição `{id:guid}` — valores fora do formato `Guid` não
   casam e resultam em resposta de rota não encontrada (ASP.NET Core).
 - **Blindagem de dados:** todos os controllers de dados (`PostController`,
@@ -399,4 +474,7 @@ connection.start();
   validade de 7 dias (`RefreshTokenExpiryTime`).
 - **Admin** também pode **revogar** uma aprovação (`/revoke`, derruba a sessão)
   e **deletar** um usuário (`DELETE /api/admin/users/{id}`).
+- **Migration pendente:** a coluna `Posts.ImageUrls` (`text[] NOT NULL DEFAULT
+  '{}'`) exige rodar `dotnet ef database update`. A migração é aditiva e
+  segura em tabela populada (o default preenche os posts existentes).
 

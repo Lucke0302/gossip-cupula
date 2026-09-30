@@ -44,3 +44,39 @@ GET {{GossipCupula.Api_HostAddress}}/api/posts/{{postId}}/comments?limit=20&curs
 Authorization: Bearer {{token}}
 
 ###
+
+# Contador isolado de comentários: { "count": N }
+GET {{GossipCupula.Api_HostAddress}}/api/posts/{{postId}}/comments/count
+Authorization: Bearer {{token}}
+
+###
+
+# Publica com imagem (multipart/form-data). O arquivo precisa existir no disco.
+POST {{GossipCupula.Api_HostAddress}}/api/posts
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----GossipBoundary
+
+------GossipBoundary
+Content-Disposition: form-data; name="text"
+
+o babado agora tem foto
+------GossipBoundary
+Content-Disposition: form-data; name="images"; filename="babado.png"
+Content-Type: image/png
+
+< ./babado.png
+------GossipBoundary--
+
+###
+
+# Publica sem imagem, no contrato JSON antigo (rota separada da multipart).
+POST {{GossipCupula.Api_HostAddress}}/api/posts/json
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "sem foto",
+  "content": "só o texto, como antes"
+}
+
+###

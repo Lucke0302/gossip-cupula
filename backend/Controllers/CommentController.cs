@@ -64,4 +64,24 @@ public class CommentController : ControllerBase
         var page = await _commentService.GetPageAsync(postId, cursor, limit);
         return Ok(page);
     }
+
+    /// <summary>
+    /// Contador de comentários do post: consulta o banco (<c>COUNT</c>) e
+    /// devolve <c>{ "count": X }</c>. Rota própria e isolada porque é o único
+    /// dado que o cartão do post precisa — carregar a listagem paginada só
+    /// para mostrar um número seria caro em todos os sentidos.
+    /// </summary>
+    /// <remarks>
+    /// Post inexistente devolve 200 com <c>count: 0</c>, igual ao
+    /// <c>GET</c> da listagem: nenhuma das duas rotas valida a existência do
+    /// post, elas apenas filtram por <c>PostId</c>.
+    /// </remarks>
+    [HttpGet("count")]
+    [ProducesResponseType(typeof(CommentCountResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<CommentCountResponse>> Count(Guid postId)
+    {
+        var count = await _commentService.CountAsync(postId);
+        return Ok(new CommentCountResponse { Count = count });
+    }
 }

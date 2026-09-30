@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Card } from './Card';
+import { PostImages } from './PostImages';
 import { VoteButtons } from './VoteButtons';
 import { fuzzyTime, fuzzyTimeLong, plural } from '../lib/format';
 import type { Post } from '../types';
@@ -19,15 +20,9 @@ export function PostCard({ post }: { post: Post }) {
         </Link>
       </h2>
 
-      {post.imageUrl ? (
+      {post.imageUrls.length > 0 ? (
         <Link to={`/post/${post.id}`} tabIndex={-1} aria-hidden="true" className="block">
-          <img
-            src={post.imageUrl}
-            alt={post.imageAlt ?? ''}
-            loading="lazy"
-            decoding="async"
-            className="block w-full rounded-sm"
-          />
+          <PostImages urls={post.imageUrls} />
         </Link>
       ) : null}
 

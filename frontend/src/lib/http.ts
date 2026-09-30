@@ -25,6 +25,13 @@ export function configureHttp(hooks: { onUnauthorized: () => void }): void {
 
 export type RequestOptions<TSchema extends z.ZodTypeAny> = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  /**
+   * Corpo da requisicao.
+   *
+   * `unknown` porque nem todo corpo e' JSON: um `FormData` (upload
+   * multipart, ver POST /posts) vai inteiro pro `fetch`, sem
+   * serializacao e sem `Content-Type` escrito a mao.
+   */
   body?: unknown;
   schema: TSchema;
   signal?: AbortSignal;
@@ -33,12 +40,34 @@ export type RequestOptions<TSchema extends z.ZodTypeAny> = {
   /**
    * 'auto' (padrao) segue a flag VITE_USE_MOCKS.
    * 'mock' forca a camada falsa mesmo com a API ligada — usado pelo que a
-   * API ainda nao tem (comentarios, fotos, links). Sem isso essas telas
-   * receberiam 404 do servidor.
+   * API ainda nao tem (fotos, links). Sem isso essas telas receberiam 404
+   * do servidor.
    */
   source?: 'auto' | 'mock';
   query?: Record<string, string | number | undefined | null>;
 };
+
+/**
+ * Decide como o corpo viaja e quais headers ele exige.
+ *
+ * Multipart e' o caso que nao se pode errar: o `boundary` que separa os
+ * campos do formulario e' gerado pelo navegador no momento do envio. Se
+ * o `Content-Type` for escrito a mao aqui (mesmo com o valor certo), ele
+ * vai SEM o boundary — e o backend nao consegue separar campo nenhum,
+ * devolvendo 400 com o texto vazio. Entao, para `FormData`, o header
+ * simplesmente nao existe e o `fetch` monta o resto.
+ */
+function montarCorpo(body: unknown): {
+  headers: Record<string, string>;
+  body: BodyInit | undefined;
+} {
+  if (body === undefined) return { headers: {}, body: undefined };
+  if (body instanceof FormData) return { headers: {}, body };
+  return {
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  };
+}
 
 function transport(path: string, init: RequestInit, source: 'auto' | 'mock'): Promise<Response> {
   if (USE_MOCKS || source === 'mock') return mockFetch(path, init);
@@ -75,15 +104,15 @@ export async function request<TSchema extends z.ZodTypeAny>(
   path: string,
   options: RequestOptions<TSchema>,
 ): Promise<z.infer<TSchema>> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  const corpo = montarCorpo(options.body);
+  const headers: Record<string, string> = { Accept: 'application/json', ...corpo.headers };
 
   const response = await transport(
     buildUrl(path, options.query),
     {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: corpo.body,
       // Obrigatorio: o cookie de sessao e' HttpOnly e so viaja com isso.
       credentials: 'include',
       signal: options.signal,

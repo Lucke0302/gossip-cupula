@@ -54,17 +54,42 @@ export function getPost(id: string, signal?: AbortSignal): Promise<PostDetail> {
 }
 
 /**
+ * Monta o `multipart/form-data` do `POST /posts`.
+ *
+ * O backend recebe `[FromForm] CreatePostFormRequest`: `Text` vira o
+ * content do post, `Title` e' a manchete e `Images` e' a lista de
+ * arquivos. Os nomes vao na mesma caixa das propriedades C# — o binder
+ * de formulario do ASP.NET e' case-insensitive, entao `text`/`images`
+ * tambem casariam; o que NAO pode faltar e' o arquivo ir como `File`
+ * dentro do FormData.
+ *
+ * Quem define o `Content-Type` (com o boundary) e' o navegador: este
+ * objeto vai pro `fetch` do jeito que esta' — veja `montarCorpo` em
+ * src/lib/http.ts.
+ *
+ * O mock usa esta mesma funcao, de proposito: ele responde ao request
+ * exatamente como a API responderia, multipart incluido.
+ */
+export function buildCreatePostForm(input: CreatePostInput): FormData {
+  const form = new FormData();
+  form.append('Text', input.content);
+  form.append('Title', input.title);
+  for (const file of input.images) form.append('Images', file);
+  return form;
+}
+
+/**
  * Publica.
  *
- * `imageDataUrl` fica de fora: o `CreatePostDto` da API só tem `title` e
- * `content`, então a foto anexada não tem por onde ir. Quem escolhe uma
- * imagem hoje vê a prévia, mas ela não é publicada — está anotado no
- * README como pendência do servidor.
+ * `POST /posts` e' a rota multipart (texto + arquivos). O contrato
+ * antigo, so' texto, continua vivo em `/posts/json`, mas nao vale a pena
+ * manter dois caminhos no front: sem foto, o FormData vai igual e o
+ * resultado e' o mesmo post.
  */
 export function createPost(input: CreatePostInput): Promise<PostDetail> {
   return request('/posts', {
     method: 'POST',
-    body: { title: input.title, content: input.content },
+    body: buildCreatePostForm(input),
     schema: backendPostSchema,
   }).then(toPostDetail);
 }

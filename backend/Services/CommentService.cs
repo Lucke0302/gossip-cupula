@@ -93,6 +93,20 @@ public class CommentService(AppDbContext dbContext) : ICommentService
         };
     }
 
+    /// <summary>
+    /// Quantidade de comentários do post.
+    /// <para>
+    /// É um <c>COUNT</c> no banco: nenhum comentário é materializado, nenhum
+    /// campo além do necessário é lido. Um post inexistente devolve 0, mesmo
+    /// comportamento do <c>GET</c> da listagem (que não valida a existência do
+    /// post, apenas filtra por <c>PostId</c>).
+    /// </para>
+    /// </summary>
+    public async Task<int> CountAsync(Guid postId) =>
+        await dbContext.Comments
+            .AsNoTracking()
+            .CountAsync(comment => comment.PostId == postId);
+
     private static CommentResponse ToResponse(Comment comment) => new()
     {
         Id = comment.Id,

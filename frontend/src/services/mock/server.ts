@@ -11,6 +11,7 @@ import {
   type MockPost,
 } from './data';
 import { USE_MOCKS } from '../../lib/env';
+import { MAX_POST_IMAGES } from '../../types';
 
 /* ------------------------------------------------------------------ *
  * Camada de mocks.
@@ -75,6 +76,31 @@ function parseBody<T>(init: RequestInit): T {
   return JSON.parse(init.body) as T;
 }
 
+/**
+ * Corpo multipart, quando existe.
+ *
+ * `init.body` chega como `BodyInit`; so' o `FormData` interessa a esta
+ * camada, entao o resto vira `null` e a rota responde 400.
+ */
+function formularioDe(init: RequestInit): FormData | null {
+  const corpo: unknown = init.body;
+  return corpo instanceof FormData ? corpo : null;
+}
+
+/**
+ * Arquivos de um campo do formulario.
+ *
+ * `getAll` devolve `string | File` — um campo de texto com o mesmo nome
+ * nao e' imagem, entao so' o que nao e' string entra.
+ */
+function arquivosDe(form: FormData, campo: string): File[] {
+  const arquivos: File[] = [];
+  for (const item of form.getAll(campo)) {
+    if (typeof item !== 'string') arquivos.push(item);
+  }
+  return arquivos;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -99,8 +125,7 @@ function toPostSummary(post: MockPost) {
     id: post.id,
     title: post.title,
     excerpt: post.excerpt,
-    imageUrl: post.imageUrl,
-    imageAlt: post.imageAlt,
+    imageUrls: post.imageUrls,
     commentCount: comments.filter((c) => c.postId === post.id).length,
     likes: post.likes,
     dislikes: post.dislikes,
@@ -119,7 +144,11 @@ function toComment(comment: MockComment) {
 
 /* ------------------------------ rotas ------------------------------ */
 
-type Handler = (init: RequestInit, params: Record<string, string>, url: URL) => Response;
+type Handler = (
+  init: RequestInit,
+  params: Record<string, string>,
+  url: URL,
+) => Response | Promise<Response>;
 
 const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   {
@@ -218,18 +247,22 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
   {
     method: 'POST',
     pattern: /^\/posts$/,
-    handler: (_init) => {
+    handler: async (init) => {
       const session = readSession();
       if (!session) return unauthorized();
 
-      const { title, content, imageDataUrl } = parseBody<{
-        title?: string;
-        content?: string;
-        imageDataUrl?: string | null;
-      }>(_init);
+      // O post chega em multipart/form-data, igual ao POST /api/posts.
+      const form = formularioDe(init);
+      if (!form) return fail(400, 'o post chega em multipart/form-data');
 
-      if (!title?.trim() || !content?.trim()) {
-        return fail(400, 'manchete e babado são obrigatórios');
+      const content = String(form.get('Text') ?? '');
+      const title = String(form.get('Title') ?? '');
+      const images = arquivosDe(form, 'Images');
+
+      if (!content.trim()) return fail(400, 'o babado é obrigatório');
+      if (!title.trim()) return fail(400, 'manchete e babado são obrigatórios');
+      if (images.length > MAX_POST_IMAGES) {
+        return fail(400, `no máximo ${MAX_POST_IMAGES} imagens por post`);
       }
 
       const paragraphs = content
@@ -242,8 +275,9 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
         title: title.trim(),
         excerpt: (paragraphs[0] ?? content).slice(0, 220),
         body: paragraphs.length > 0 ? paragraphs : [content.trim()],
-        imageUrl: imageDataUrl ?? null,
-        imageAlt: imageDataUrl ? 'Foto anexada ao post' : null,
+        // Sem object storage aqui: um object URL por arquivo local resolve
+        // o que importa, que e' a foto aparecer no feed e no post.
+        imageUrls: images.map((image) => URL.createObjectURL(image)),
         likes: 0,
         dislikes: 0,
         // A autoria (session.nickname) para AQUI. Nao entra no registro.

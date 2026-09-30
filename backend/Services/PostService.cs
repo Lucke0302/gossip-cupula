@@ -17,11 +17,15 @@ namespace GossipCupula.Api.Services;
 /// </summary>
 public class PostService(
     AppDbContext dbContext,
+    IStorageService storageService,
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration,
     ILogger<PostService> logger,
     IHubContext<GossipHub> hubContext) : IPostService
 {
+    /// <summary>Tamanho máximo do título, alinhado à coluna <c>Posts.Title</c>.</summary>
+    private const int MaxTitleLength = 200;
+
     private static readonly Expression<Func<Post, PostResponseDto>> ToResponseDto = post => new PostResponseDto
     {
         Id = post.Id,
@@ -31,6 +35,11 @@ public class PostService(
         CreatedAt = post.CreatedAt,
         EditedAt = post.EditedAt,
         EditedBy = post.EditedBy,
+        // Array "text[]" do próprio post: vem na mesma linha, sem join.
+        ImageUrls = post.ImageUrls,
+        // COUNT correlacionado no MESMO SELECT: uma query para a lista
+        // inteira, não uma query por post (N+1).
+        CommentCount = post.Comments.Count(),
         LikesCount = post.Votes.Count(vote => vote.Vote == VoteType.Like),
         DislikesCount = post.Votes.Count(vote => vote.Vote == VoteType.Dislike)
     };
@@ -53,13 +62,44 @@ public class PostService(
             .FirstOrDefaultAsync();
     }
 
-    public async Task<PostResponseDto> CreateAsync(CreatePostDto createPostDto)
+    /// <summary>
+    /// Publica um post sem imagens (contrato JSON: <c>title</c> + <c>content</c>).
+    /// </summary>
+    public Task<PostResponseDto> CreateAsync(CreatePostDto createPostDto) =>
+        CreateAsync(createPostDto.Title, createPostDto.Content, []);
+
+    /// <summary>
+    /// Publica um post vindo de <c>multipart/form-data</c> (texto + imagens).
+    /// <para>
+    /// Os uploads acontecem em paralelo (<c>Task.WhenAll</c>): cinco fotos
+    /// custam o tempo da mais lenta, não a soma das cinco. Se qualquer upload
+    /// falhar, a exceção sobe e <b>nada</b> é gravado — post com URL quebrada
+    /// seria pior que post não publicado.
+    /// </para>
+    /// </summary>
+    public async Task<PostResponseDto> CreateAsync(CreatePostFormRequest formRequest)
+    {
+        var images = formRequest.Images;
+        var imageUrls = images is null || images.Count == 0
+            ? []
+            : (await Task.WhenAll(images.Select(image => storageService.UploadImageAsync(image)))).ToList();
+
+        return await CreateAsync(ResolveTitle(formRequest.Title, formRequest.Text), formRequest.Text, imageUrls);
+    }
+
+    /// <summary>
+    /// Grava o post e dispara os efeitos colaterais (webhook do Bostossauro e
+    /// evento SignalR). Ponto único de escrita: os dois contratos de entrada
+    /// (JSON e multipart) convergem para cá.
+    /// </summary>
+    private async Task<PostResponseDto> CreateAsync(string title, string content, List<string> imageUrls)
     {
         var post = new Post
         {
             Id = Guid.NewGuid(),
-            Title = createPostDto.Title.Trim(),
-            Content = createPostDto.Content.Trim(),
+            Title = title.Trim(),
+            Content = content.Trim(),
+            ImageUrls = imageUrls,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -131,6 +171,27 @@ public class PostService(
             throw new UnauthorizedAccessException(
                 "Apenas usuários com a role \"Admin\" podem editar ou excluir posts.");
         }
+    }
+
+    /// <summary>
+    /// Título do post. O formulário novo manda só o texto, então quando o
+    /// título não vem (ou vem só com espaços) ele é derivado da primeira
+    /// linha do texto — a coluna <c>Posts.Title</c> é NOT NULL e não vale
+    /// gravar manchete vazia. O corte em 200 caracteres respeita o tamanho
+    /// da coluna.
+    /// </summary>
+    private static string ResolveTitle(string? title, string content)
+    {
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            return title.Trim();
+        }
+
+        var firstLine = content
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault() ?? content.Trim();
+
+        return firstLine.Length <= MaxTitleLength ? firstLine : firstLine[..MaxTitleLength];
     }
 
     /// <summary>

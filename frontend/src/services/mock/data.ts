@@ -45,8 +45,12 @@ export type MockPost = {
   title: string;
   excerpt: string;
   body: string[];
-  imageUrl: string | null;
-  imageAlt: string | null;
+  /**
+   * Mesma forma do `PostResponseDto` da API: lista de URLs, vazia quando
+   * o post nao tem foto. Nada de `imageUrl` singular — o mock imita o
+   * contrato que existe, nao um mais simples.
+   */
+  imageUrls: string[];
   likes: number;
   dislikes: number;
   publishedAt: string;
@@ -69,8 +73,7 @@ export const posts: MockPost[] = [
       'Ela desceu do carro usando o mesmo vestido da festa em que jurou nunca mais voltar. Coincidência? Nesta cúpula, ninguém erra o guarda-roupa por acaso.',
       'A pergunta que interessa não é por que ela voltou — é quem a chamou. E, mais importante, quem vai pagar essa conta antes do fim de semana. Já tenho um palpite. Vocês têm treze.',
     ],
-    imageUrl: stripeImage(840, 500, 'FOTO DO POST'),
-    imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    imageUrls: [stripeImage(840, 500, 'FOTO DO POST'), stripeImage(840, 420, 'FOTO 2 DO POST')],
     likes: 14,
     dislikes: 3,
     publishedAt: hoursAgo(3),
@@ -84,8 +87,7 @@ export const posts: MockPost[] = [
       'Alguém pediu a mesa do fundo. Alguém pagou em dinheiro. E alguém saiu pela porta da cozinha. Três alguéns, um bilhete só.',
       'Já sabemos de dois. Falta você contar o terceiro — e a gente sabe que você sabe, porque estava na mesa ao lado fingindo ler o cardápio.',
     ],
-    imageUrl: stripeImage(840, 392, 'FOTO DO POST'),
-    imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    imageUrls: [stripeImage(840, 392, 'FOTO DO POST')],
     likes: 6,
     dislikes: 1,
     publishedAt: hoursAgo(28),
@@ -99,8 +101,7 @@ export const posts: MockPost[] = [
       'A lista tinha quarenta nomes. Trinta e nove receberam. O quadragésimo descobriu pelo story de outra pessoa, o que é bem pior do que não ser convidada.',
       'Dizem que foi erro do correio. O correio, coitado, leva a culpa de metade dos rompimentos dessa cúpula.',
     ],
-    imageUrl: null,
-    imageAlt: null,
+    imageUrls: [],
     likes: 3,
     dislikes: 0,
     publishedAt: hoursAgo(51),
@@ -114,8 +115,7 @@ export const posts: MockPost[] = [
       'Chave devolvida sem bilhete é a coisa mais barulhenta que existe. E essa foi entregue na portaria, com testemunha, o que sugere que o silêncio era pra ser público.',
       'Duas pessoas sabem de qual porta é. Uma delas está lendo isso agora e considerando fechar o notebook.',
     ],
-    imageUrl: stripeImage(840, 440, 'FOTO DO POST'),
-    imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    imageUrls: [stripeImage(840, 440, 'FOTO DO POST')],
     likes: 9,
     dislikes: 2,
     publishedAt: hoursAgo(74),
@@ -129,8 +129,7 @@ export const posts: MockPost[] = [
       'Chegaram juntos. Saíram em três carros, em três direções, com três desculpas que não combinam entre si — e a gente conferiu.',
       'A sobremesa nem chegou à mesa. O que quer que tenha sido dito entre o prato principal e a conta, foi caro.',
     ],
-    imageUrl: stripeImage(840, 380, 'FOTO DO POST'),
-    imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    imageUrls: [stripeImage(840, 380, 'FOTO DO POST')],
     likes: 21,
     dislikes: 5,
     publishedAt: hoursAgo(99),
@@ -144,8 +143,7 @@ export const posts: MockPost[] = [
       'Existe um tipo de silêncio coletivo que é praticamente uma confissão assinada. Foi esse o silêncio de sábado, das 23h em diante.',
       'Não vou ser eu a estragar. Vou ser eu a abrir os comentários e esperar sentada.',
     ],
-    imageUrl: null,
-    imageAlt: null,
+    imageUrls: [],
     likes: 4,
     dislikes: 1,
     publishedAt: hoursAgo(126),
@@ -159,8 +157,7 @@ export const posts: MockPost[] = [
       'E o outro nome não é de ninguém que a gente conhece. O que, nesta cúpula, significa exatamente o contrário: é de alguém que a gente conhece muito bem.',
       'Duas mesas. Mesma noite. Restaurantes a seis quarteirões um do outro. Alguém dirigiu rápido.',
     ],
-    imageUrl: stripeImage(840, 420, 'FOTO DO POST'),
-    imageAlt: 'Placeholder listrado no lugar da foto anexada ao post',
+    imageUrls: [stripeImage(840, 420, 'FOTO DO POST')],
     likes: 11,
     dislikes: 2,
     publishedAt: hoursAgo(150),
