@@ -40,7 +40,7 @@ export const DEFAULT_SECTIONS: Section[] = [
     label: 'eventos',
     color: 'text-eventos',
     description: 'seu convite provavelmente sumiu no correio.',
-    to: '/links',
+    to: '/eventos',
     cta: 'CLIQUE AQUI',
   },
   { key: 'links', label: 'links', color: 'text-links', to: '/links' },

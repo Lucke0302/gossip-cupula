@@ -233,3 +233,69 @@ export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+/* ------------------------------ eventos ------------------------------ */
+
+/**
+ * Cores possiveis da estrelinha. Sao as mesmas das secoes do design —
+ * rosa (eventos), coral (fofocas), amarelo (fotos), azul (welcome) e
+ * verde (links).
+ */
+export const EVENT_COLORS = ['#E86B9E', '#E8763A', '#E8D44D', '#6BB9E8', '#8DC63F'] as const;
+
+export const eventColorSchema = z.enum(EVENT_COLORS);
+
+/**
+ * Um compromisso fixado no calendario.
+ *
+ * Igual a Post e Comment: NAO tem autor. Quem fixou a estrelinha some no
+ * caminho — e' de proposito, e' o mesmo requisito do resto do site. Por
+ * consequencia, qualquer pessoa da cupula pode desfixar o que foi
+ * fixado; nao existe dono pra conferir.
+ */
+export const eventSchema = z
+  .object({
+    id: opaqueIdSchema,
+    /** Data do evento, YYYY-MM-DD. O grao e' o dia: sem hora exata aqui. */
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'data deve ser YYYY-MM-DD'),
+    title: z.string().min(1).max(120),
+    /** Texto livre: "22h", "horário a confirmar". Nao e' timestamp. */
+    time: z.string().max(40),
+    place: z.string().max(120),
+    description: z.string().max(500),
+    color: eventColorSchema,
+    /** Quantos confirmaram. Agregado: a API nunca diz QUEM. */
+    goingCount: z.number().int().nonnegative(),
+    /**
+     * Se VOCE confirmou. E' o unico dado pessoal do objeto, e so' faz
+     * sentido pra quem pediu — o servidor responde isso olhando o token
+     * de quem chamou, nunca expondo a lista de confirmados.
+     */
+    isGoing: z.boolean(),
+  })
+  .strict();
+
+export const goingResultSchema = z
+  .object({
+    eventId: z.string(),
+    goingCount: z.number().int().nonnegative(),
+    isGoing: z.boolean(),
+  })
+  .strict();
+
+export type EventColor = z.infer<typeof eventColorSchema>;
+export type CalendarEvent = z.infer<typeof eventSchema>;
+export type GoingResult = z.infer<typeof goingResultSchema>;
+
+/** O formulario do design pede so' o titulo e a cor. O resto tem padrao. */
+export const createEventSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  title: z
+    .string()
+    .trim()
+    .min(3, 'conta pelo menos o que vai rolar')
+    .max(120, 'cabe em 120 caracteres'),
+  color: eventColorSchema,
+});
+
+export type CreateEventInput = z.infer<typeof createEventSchema>;

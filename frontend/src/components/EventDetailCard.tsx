@@ -1,0 +1,128 @@
+import { useState } from 'react';
+import { Card } from './Card';
+import { EventStar } from './EventStar';
+import { Button } from './ui';
+import { DIAS_DA_SEMANA, diaDaChave, diaDaSemanaDaChave } from '../lib/calendar';
+import { EVENT_COLORS, type CalendarEvent, type EventColor } from '../types';
+
+/**
+ * O cartão abaixo do calendário: ou mostra o que está marcado no dia
+ * escolhido, ou oferece fixar uma estrelinha nele.
+ */
+export function EventDetailCard({
+  chaveDoDiaSelecionado,
+  evento,
+  ocupado,
+  onFixar,
+  onDesfixar,
+  onConfirmar,
+}: {
+  chaveDoDiaSelecionado: string;
+  evento: CalendarEvent | undefined;
+  ocupado: boolean;
+  onFixar: (titulo: string, cor: EventColor) => void;
+  onDesfixar: (id: string) => void;
+  onConfirmar: (id: string) => void;
+}) {
+  const [rascunho, setRascunho] = useState('');
+  const [cor, setCor] = useState<EventColor>(EVENT_COLORS[0]);
+
+  const dia = diaDaChave(chaveDoDiaSelecionado);
+  const semana = DIAS_DA_SEMANA[diaDaSemanaDaChave(chaveDoDiaSelecionado)] ?? '';
+
+  return (
+    <Card padding="none" className="flex items-start gap-4 px-4 py-3.5" as="section">
+      <div className="w-16 flex-none text-center">
+        <div className="font-hand text-[56px] leading-[0.85] text-[#222]">{dia}</div>
+        <div className="mt-[3px] font-body text-[10px] uppercase leading-none tracking-[.08em] text-muted">
+          {semana}
+        </div>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        {evento ? (
+          <>
+            <h3 className="font-serif text-[16px] leading-[1.25] text-[#222]">{evento.title}</h3>
+            <p className="mt-[3px] font-body text-[11px] leading-[1.4] text-[#777]">
+              {evento.time} · {evento.place}
+            </p>
+            <p className="mt-[7px] font-body text-post text-body">{evento.description}</p>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="font-body text-[11px] text-[#666]">
+                {evento.goingCount} confirmaram (anônimos, claro)
+              </p>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  disabled={ocupado}
+                  onClick={() => onDesfixar(evento.id)}
+                  className="font-body text-[11px] text-link underline disabled:opacity-50"
+                >
+                  desfixar
+                </button>
+                <Button
+                  disabled={ocupado}
+                  onClick={() => onConfirmar(evento.id)}
+                  className={evento.isGoing ? '!bg-eventos' : '!bg-eventos/80'}
+                >
+                  {evento.isGoing ? 'tô dentro ✓' : 'vou de penetra'}
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="font-serif text-[16px] leading-[1.25] text-[#222]">
+              nada marcado. ainda.
+            </h3>
+            <p className="mt-[3px] font-body text-[11px] leading-[1.4] text-[#777]">
+              sabe de alguma coisa nesse dia? fixa uma estrelinha.
+            </p>
+
+            <label htmlFor="novo-evento" className="sr-only">
+              o que vai rolar nesse dia
+            </label>
+            <input
+              id="novo-evento"
+              value={rascunho}
+              onChange={(evt) => setRascunho(evt.target.value)}
+              placeholder="o que vai rolar? (sem nomes)"
+              maxLength={120}
+              className="mt-2.5 w-full rounded-field border border-field-border bg-field px-[10px] py-2 font-body text-[12.5px] leading-[1.35] text-body shadow-sunken outline-none placeholder:text-[#9d9d92] focus:border-welcome focus:shadow-focusring"
+            />
+
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-[7px]">
+                <span className="font-body text-[11px] text-[#666]">cor:</span>
+                {EVENT_COLORS.map((opcao) => (
+                  <button
+                    key={opcao}
+                    type="button"
+                    onClick={() => setCor(opcao)}
+                    aria-label={`cor ${opcao}`}
+                    aria-pressed={cor === opcao}
+                    className="flex h-5 w-5 items-center justify-center rounded-full"
+                    style={{ boxShadow: cor === opcao ? '0 0 0 2px #333' : 'none' }}
+                  >
+                    <EventStar color={opcao} size={16} />
+                  </button>
+                ))}
+              </div>
+
+              <Button
+                disabled={ocupado || rascunho.trim().length < 3}
+                onClick={() => {
+                  onFixar(rascunho, cor);
+                  setRascunho('');
+                }}
+              >
+                {ocupado ? 'fixando…' : 'fixar estrelinha'}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}

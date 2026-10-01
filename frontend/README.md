@@ -187,9 +187,60 @@ de uso único enviado por e-mail.
 
 | o que falta          | efeito no front                                                     |
 | -------------------- | -------------------------------------------------------------------- |
-| comentários          | `/posts/{id}/comments` (GET/POST) não existe — o front usa mocks     |
+| **eventos**          | `/events` não existe — a tela `/eventos` roda inteira em mocks (contrato abaixo) |
 | fotos e links        | `/photos` e `/links` não existem — idem                              |
 | paginação            | `GET /posts` devolve o array inteiro; a fatia é feita no cliente     |
+
+#### Contrato dos eventos (o calendário)
+
+A tela `/eventos` está pronta e funciona em mocks. Para ligá-la na API, basta
+implementar as quatro rotas abaixo e remover `source: 'mock'` de
+`src/services/events.service.ts` — nenhuma tela muda.
+
+Todas exigem `[Authorize]`, como o resto dos dados.
+
+| método   | rota                   | corpo                       | resposta                                  |
+| -------- | ---------------------- | --------------------------- | ----------------------------------------- |
+| `GET`    | `/events?month=YYYY-MM` | —                           | `{ items: Event[], nextCursor: null }`    |
+| `POST`   | `/events`              | `{ date, title, color }`    | `Event` (201)                             |
+| `DELETE` | `/events/{id}`         | —                           | `204`                                     |
+| `POST`   | `/events/{id}/going`   | —                           | `{ eventId, goingCount, isGoing }`        |
+
+```jsonc
+// Event
+{
+  "id": "uuid",
+  "date": "2026-10-24",        // YYYY-MM-DD, sem hora: o grão é o dia
+  "title": "baile de máscaras",
+  "time": "23h",               // texto livre, NÃO timestamp
+  "place": "salão da cúpula",
+  "description": "...",
+  "color": "#E86B9E",          // uma das 5 cores do design
+  "goingCount": 31,            // agregado
+  "isGoing": false             // se QUEM PEDIU confirmou
+}
+```
+
+**Três coisas que o contrato assume, e por quê:**
+
+1. **Evento não tem autor.** Igual a post e comentário. Consequência direta:
+   não existe dono para conferir, então **qualquer pessoa da cúpula pode
+   desfixar** o que foi fixado. Se vocês preferirem restringir a Admin, é uma
+   linha no controller — mas aí o botão "desfixar" precisa sumir para quem não
+   é admin, e eu ajusto o front.
+2. **`goingCount` é agregado e `isGoing` é só seu.** O servidor nunca devolve a
+   lista de quem confirmou; ele olha o token de quem chamou e responde só sobre
+   essa pessoa. Foi assim que os votos de post *deveriam* ter sido feitos — lá
+   a API não expõe o voto do usuário, e o front teve que lembrar em
+   `localStorage` (`src/lib/votes.ts`). Aqui dá para nascer certo.
+3. **`time` é texto, não timestamp.** "22h", "horário a confirmar". Hora exata
+   em campo de data convida a ordenação por minuto, que é o tipo de metadado
+   que o resto do site evita de propósito.
+
+O `POST /events` só recebe `date`, `title` e `color` porque é o que o formulário
+do design coleta; `time`, `place` e `description` nascem com os padrões de
+"marcado anonimamente" e podem ser editados depois, se vocês quiserem uma rota
+de edição.
 
 **Imagem no post já existe.** `POST /api/posts` recebe `multipart/form-data`
 (`Text` obrigatório, `Title` opcional e `Images` com zero a dez arquivos de até
@@ -214,7 +265,8 @@ src/services/
   posts.service.ts       escolhe a fonte (mocks ou API) e expõe uma só interface
   backend/dto.ts         DTO real da API + conversão para o domínio anônimo
   backend/posts.ts       posts contra a API, com paginação feita no cliente
-  comments.service.ts    presos em mocks: a API não tem essas rotas
+  comments.service.ts    comentários, já contra a API
+  events.service.ts      eventos do calendário — preso em mocks, a API não tem as rotas
   gallery.service.ts     idem
   mock/                  dados e servidor falso
 src/lib/
@@ -273,6 +325,7 @@ O formato exato de cada tipo está em `src/types/index.ts` — os schemas Zod
 | `/conta-pendente` | aviso de conta aguardando liberação    | não       |
 | `/links`          | links                                  | sim       |
 | `/fotos`          | galeria                                | sim       |
+| `/eventos`        | calendário rabiscado de eventos        | sim       |
 | `*`               | 404 no mesmo visual                    | não       |
 
 Todas as rotas são `lazy`, cada uma no seu chunk.

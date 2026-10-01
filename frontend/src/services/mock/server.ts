@@ -3,11 +3,13 @@ import {
   adminUsers,
   comments,
   coarse,
+  events,
   links,
   opaqueId,
   photos,
   posts,
   type MockComment,
+  type MockEvent,
   type MockPost,
 } from './data';
 import { USE_MOCKS } from '../../lib/env';
@@ -419,6 +421,80 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
 
       adminUsers.splice(indice, 1);
       return new Response(null, { status: 204 });
+    },
+  },
+
+  {
+    method: 'GET',
+    pattern: /^\/events$/,
+    handler: (_init, _params, url) => {
+      if (!readSession()) return unauthorized();
+      // Filtra pelo mes pedido (YYYY-MM). Sem mes, devolve tudo.
+      const mes = url.searchParams.get('month');
+      const items = mes ? events.filter((e) => e.date.startsWith(mes)) : events;
+      return json({ items: [...items].sort((a, b) => a.date.localeCompare(b.date)), nextCursor: null });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/events$/,
+    handler: (_init) => {
+      if (!readSession()) return unauthorized();
+
+      const { date, title, color } = parseBody<{
+        date?: string;
+        title?: string;
+        color?: string;
+      }>(_init);
+
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'data inválida');
+      if (!title?.trim()) return fail(400, 'conta pelo menos o que vai rolar');
+      if (!color) return fail(400, 'escolhe uma cor');
+
+      const criado: MockEvent = {
+        id: opaqueId(),
+        date,
+        title: title.trim(),
+        // O formulario do design so' coleta titulo e cor; o resto nasce
+        // com os padroes de "marcado anonimamente".
+        time: 'horário a confirmar',
+        place: 'local em segredo',
+        description: 'marcado anonimamente. quem sabe, sabe.',
+        color,
+        goingCount: 1,
+        isGoing: true,
+      };
+
+      events.push(criado);
+      return json(criado, 201);
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/events\/([^/]+)$/,
+    handler: (_init, params) => {
+      if (!readSession()) return unauthorized();
+      const indice = events.findIndex((e) => e.id === params.id);
+      if (indice < 0) return fail(404, 'esse evento não existe (ou já sumiu)');
+      events.splice(indice, 1);
+      return new Response(null, { status: 204 });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/events\/([^/]+)\/going$/,
+    handler: (_init, params) => {
+      if (!readSession()) return unauthorized();
+      const evento = events.find((e) => e.id === params.id);
+      if (!evento) return fail(404, 'esse evento não existe (ou já sumiu)');
+
+      evento.isGoing = !evento.isGoing;
+      evento.goingCount = Math.max(evento.goingCount + (evento.isGoing ? 1 : -1), 0);
+      return json({
+        eventId: evento.id,
+        goingCount: evento.goingCount,
+        isGoing: evento.isGoing,
+      });
     },
   },
 
