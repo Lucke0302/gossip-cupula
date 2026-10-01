@@ -202,7 +202,7 @@ Todas exigem `[Authorize]`, como o resto dos dados.
 | método   | rota                   | corpo                       | resposta                                  |
 | -------- | ---------------------- | --------------------------- | ----------------------------------------- |
 | `GET`    | `/events?month=YYYY-MM` | —                           | `{ items: Event[], nextCursor: null }`    |
-| `POST`   | `/events`              | `{ date, title, color }`    | `Event` (201)                             |
+| `POST`   | `/events`              | `{ date, title, time, place, color }` | `Event` (201)                |
 | `DELETE` | `/events/{id}`         | —                           | `204`                                     |
 | `POST`   | `/events/{id}/going`   | —                           | `{ eventId, goingCount, isGoing }`        |
 
@@ -237,10 +237,11 @@ Todas exigem `[Authorize]`, como o resto dos dados.
    em campo de data convida a ordenação por minuto, que é o tipo de metadado
    que o resto do site evita de propósito.
 
-O `POST /events` só recebe `date`, `title` e `color` porque é o que o formulário
-do design coleta; `time`, `place` e `description` nascem com os padrões de
-"marcado anonimamente" e podem ser editados depois, se vocês quiserem uma rota
-de edição.
+No `POST /events`, **`time` e `place` são opcionais**: fixar uma estrelinha tem
+que continuar rápido, mas isto é uma agenda — quem já sabe onde e que horas diz
+na hora. Vindo vazios, o servidor preenche com `"horário a confirmar"` e
+`"local em segredo"`. `description` nasce com `"marcado anonimamente. quem sabe,
+sabe."`; mudar isso pediria uma rota de edição, que hoje não existe.
 
 **Imagem no post já existe.** `POST /api/posts` recebe `multipart/form-data`
 (`Text` obrigatório, `Title` opcional e `Images` com zero a dez arquivos de até

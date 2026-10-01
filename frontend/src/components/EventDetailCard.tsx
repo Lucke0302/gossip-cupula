@@ -5,6 +5,10 @@ import { Button } from './ui';
 import { DIAS_DA_SEMANA, diaDaChave, diaDaSemanaDaChave } from '../lib/calendar';
 import { EVENT_COLORS, type CalendarEvent, type EventColor } from '../types';
 
+/** Mesmo visual dos campos do resto do site (ui.tsx), em input solto. */
+const CAMPO =
+  'w-full rounded-field border border-field-border bg-field px-[10px] py-2 font-body text-[12.5px] leading-[1.35] text-body shadow-sunken outline-none placeholder:text-[#9d9d92] focus:border-welcome focus:shadow-focusring';
+
 /**
  * O cartão abaixo do calendário: ou mostra o que está marcado no dia
  * escolhido, ou oferece fixar uma estrelinha nele.
@@ -20,11 +24,13 @@ export function EventDetailCard({
   chaveDoDiaSelecionado: string;
   evento: CalendarEvent | undefined;
   ocupado: boolean;
-  onFixar: (titulo: string, cor: EventColor) => void;
+  onFixar: (dados: { titulo: string; hora: string; local: string; cor: EventColor }) => void;
   onDesfixar: (id: string) => void;
   onConfirmar: (id: string) => void;
 }) {
   const [rascunho, setRascunho] = useState('');
+  const [hora, setHora] = useState('');
+  const [local, setLocal] = useState('');
   const [cor, setCor] = useState<EventColor>(EVENT_COLORS[0]);
 
   const dia = diaDaChave(chaveDoDiaSelecionado);
@@ -89,8 +95,38 @@ export function EventDetailCard({
               onChange={(evt) => setRascunho(evt.target.value)}
               placeholder="o que vai rolar? (sem nomes)"
               maxLength={120}
-              className="mt-2.5 w-full rounded-field border border-field-border bg-field px-[10px] py-2 font-body text-[12.5px] leading-[1.35] text-body shadow-sunken outline-none placeholder:text-[#9d9d92] focus:border-welcome focus:shadow-focusring"
+              className={CAMPO}
             />
+
+            {/* É uma agenda: hora e lugar entram na hora de marcar. */}
+            <div className="mt-2 flex gap-2">
+              <div className="w-[40%] flex-none">
+                <label htmlFor="novo-evento-hora" className="sr-only">
+                  horário
+                </label>
+                <input
+                  id="novo-evento-hora"
+                  value={hora}
+                  onChange={(evt) => setHora(evt.target.value)}
+                  placeholder="22h"
+                  maxLength={40}
+                  className={CAMPO}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <label htmlFor="novo-evento-local" className="sr-only">
+                  onde vai ser
+                </label>
+                <input
+                  id="novo-evento-local"
+                  value={local}
+                  onChange={(evt) => setLocal(evt.target.value)}
+                  placeholder="onde? (sem endereço exato)"
+                  maxLength={120}
+                  className={CAMPO}
+                />
+              </div>
+            </div>
 
             <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-[7px]">
@@ -113,8 +149,10 @@ export function EventDetailCard({
               <Button
                 disabled={ocupado || rascunho.trim().length < 3}
                 onClick={() => {
-                  onFixar(rascunho, cor);
+                  onFixar({ titulo: rascunho, hora, local, cor });
                   setRascunho('');
+                  setHora('');
+                  setLocal('');
                 }}
               >
                 {ocupado ? 'fixando…' : 'fixar estrelinha'}

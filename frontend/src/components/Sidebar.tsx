@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 /**
@@ -49,9 +50,19 @@ export const DEFAULT_SECTIONS: Section[] = [
 export function Sidebar({
   sections = DEFAULT_SECTIONS,
   className = '',
+  extra,
+  extraAfter,
 }: {
   sections?: Section[];
   className?: string;
+  /**
+   * Bloco opcional encaixado no meio do menu — hoje é o "próximos
+   * babados" da tela de eventos, que no canvas mora logo abaixo da
+   * seção eventos e acima de links.
+   */
+  extra?: ReactNode;
+  /** Chave da seção depois da qual o `extra` entra. */
+  extraAfter?: string;
 }) {
   return (
     <nav aria-label="Seções" className={`flex flex-col gap-5 ${className}`}>
@@ -80,6 +91,8 @@ export function Sidebar({
               ) : null}
             </p>
           ) : null}
+
+          {extra && extraAfter === section.key ? <div className="mt-5">{extra}</div> : null}
         </div>
       ))}
     </nav>

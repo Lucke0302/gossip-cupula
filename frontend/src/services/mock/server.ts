@@ -441,9 +441,11 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
     handler: (_init) => {
       if (!readSession()) return unauthorized();
 
-      const { date, title, color } = parseBody<{
+      const { date, title, time, place, color } = parseBody<{
         date?: string;
         title?: string;
+        time?: string;
+        place?: string;
         color?: string;
       }>(_init);
 
@@ -455,10 +457,10 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
         id: opaqueId(),
         date,
         title: title.trim(),
-        // O formulario do design so' coleta titulo e cor; o resto nasce
-        // com os padroes de "marcado anonimamente".
-        time: 'horário a confirmar',
-        place: 'local em segredo',
+        // Hora e local sao opcionais no formulario; vazio vira o padrao
+        // de "marcado anonimamente".
+        time: time?.trim() || 'horário a confirmar',
+        place: place?.trim() || 'local em segredo',
         description: 'marcado anonimamente. quem sabe, sabe.',
         color,
         goingCount: 1,

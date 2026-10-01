@@ -287,7 +287,17 @@ export type EventColor = z.infer<typeof eventColorSchema>;
 export type CalendarEvent = z.infer<typeof eventSchema>;
 export type GoingResult = z.infer<typeof goingResultSchema>;
 
-/** O formulario do design pede so' o titulo e a cor. O resto tem padrao. */
+/**
+ * Campos do formulario de novo evento.
+ *
+ * Hora e local sao opcionais: fixar uma estrelinha tem que ser rapido,
+ * mas isso aqui e' uma agenda — quem ja' sabe onde e que horas consegue
+ * dizer na hora. Vazio vira o padrao de "marcado anonimamente".
+ *
+ *  e' texto livre ("22h", "depois do jantar") e nao timestamp:
+ * hora exata em campo de data convida ordenacao por minuto, que e' o
+ * tipo de metadado que o resto do site evita.
+ */
 export const createEventSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   title: z
@@ -295,6 +305,8 @@ export const createEventSchema = z.object({
     .trim()
     .min(3, 'conta pelo menos o que vai rolar')
     .max(120, 'cabe em 120 caracteres'),
+  time: z.string().trim().max(40, 'o horário cabe em 40 caracteres').default(''),
+  place: z.string().trim().max(120, 'o local cabe em 120 caracteres').default(''),
   color: eventColorSchema,
 });
 

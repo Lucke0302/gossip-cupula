@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { ErrorState } from '../components/ErrorState';
 import { EventDetailCard } from '../components/EventDetailCard';
 import { Layout } from '../components/Layout';
+import { UpcomingEvents } from '../components/UpcomingEvents';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import {
@@ -14,13 +15,11 @@ import {
 } from '../hooks/useEvents';
 import {
   chaveDoMes,
-  diaDaChave,
   mesVizinho,
   montarGrade,
   nomeDoMes,
 } from '../lib/calendar';
 import { messageFor } from '../lib/errors';
-import type { EventColor } from '../types';
 
 const SECTIONS = [
   { key: 'welcome', label: 'welcome', color: 'text-welcome', to: '/' },
@@ -91,7 +90,12 @@ export default function EventsPage() {
   );
 
   return (
-    <Layout sections={sections} width="wide">
+    <Layout
+      sections={sections}
+      width="wide"
+      sidebarExtra={<UpcomingEvents eventos={proximos} onEscolher={setSelecionado} />}
+      sidebarExtraAfter="eventos"
+    >
       <div className="flex flex-col gap-4.5">
         {eventos.isError ? (
           <ErrorState error={eventos.error} onRetry={() => void eventos.refetch()} />
@@ -173,9 +177,9 @@ export default function EventsPage() {
             chaveDoDiaSelecionado={chaveSelecionada}
             evento={eventoSelecionado}
             ocupado={ocupado}
-            onFixar={(titulo, cor: EventColor) =>
+            onFixar={({ titulo, hora, local, cor }) =>
               fixar.mutate(
-                { date: chaveSelecionada, title: titulo, color: cor },
+                { date: chaveSelecionada, title: titulo, time: hora, place: local, color: cor },
                 {
                   onSuccess: () => push('estrelinha fixada. agora é compromisso.', 'success'),
                   onError: (erro) => push(messageFor(erro), 'error'),
@@ -195,45 +199,6 @@ export default function EventsPage() {
             }
           />
         ) : null}
-
-        <section aria-labelledby="proximos-titulo" className="px-1">
-          <h2
-            id="proximos-titulo"
-            className="font-display text-[22px] font-light text-eventos"
-          >
-            próximos babados
-          </h2>
-
-          {proximos.length === 0 ? (
-            <p className="mt-2 font-body text-[11.5px] leading-[1.35] text-muted-dark">
-              mês vazio. ou a cúpula está quieta, ou ninguém teve coragem de marcar nada ainda.
-            </p>
-          ) : (
-            <ul className="mt-2 flex list-none flex-col gap-2 p-0">
-              {proximos.map((evento) => (
-                <li key={evento.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelecionado(evento.date)}
-                    className="flex w-full items-start gap-2 text-left"
-                  >
-                    <span
-                      className="w-6 flex-none text-right font-hand text-[22px] leading-[0.9]"
-                      style={{ color: evento.color }}
-                    >
-                      {diaDaChave(evento.date)}
-                    </span>
-                    <span className="font-body text-[11px] leading-[1.3]">
-                      <span className="text-welcome underline">{evento.title}</span>
-                      <br />
-                      <span className="text-[#8f8f84]">{evento.time}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
     </Layout>
   );

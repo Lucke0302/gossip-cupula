@@ -17,6 +17,10 @@ type Props = {
    * calendário precisa de 7 colunas confortáveis; 464px aperta demais.
    */
   width?: 'normal' | 'wide';
+  /** Bloco encaixado no menu lateral (ex.: 'próximos babados'). */
+  sidebarExtra?: ReactNode;
+  /** Chave da seção depois da qual o bloco entra. */
+  sidebarExtraAfter?: string;
 };
 
 /**
@@ -30,6 +34,8 @@ export function Layout({
   wordmark = 'page',
   bare = false,
   width = 'normal',
+  sidebarExtra,
+  sidebarExtraAfter,
 }: Props) {
   const larguraConteudo = width === 'wide' ? 'max-w-[580px]' : 'max-w-[464px]';
   const larguraContainer = width === 'wide' ? 'max-w-[1140px]' : 'max-w-[1024px]';
@@ -59,7 +65,12 @@ export function Layout({
           </div>
 
           <div className={`mx-auto flex w-full ${larguraContainer} items-start justify-center gap-10 px-4 pt-4 sm:pt-6`}>
-            <Sidebar sections={sections} className="hidden w-[200px] flex-none pt-1 lg:flex" />
+            <Sidebar
+              sections={sections}
+              extra={sidebarExtra}
+              extraAfter={sidebarExtraAfter}
+              className="hidden w-[200px] flex-none pt-1 lg:flex"
+            />
 
             <main id="conteudo" className={`w-full ${larguraConteudo} flex-none`}>
               {children}
@@ -71,7 +82,7 @@ export function Layout({
           </div>
 
           <div className={`mx-auto mt-8 w-full ${larguraConteudo} border-t border-wordmark/10 px-4 pt-7 lg:hidden`}>
-            <Sidebar sections={sections} />
+            <Sidebar sections={sections} extra={sidebarExtra} extraAfter={sidebarExtraAfter} />
           </div>
         </>
       )}
