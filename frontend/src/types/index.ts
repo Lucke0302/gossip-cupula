@@ -291,6 +291,19 @@ export const eventSchema = z
     place: z.string().max(120),
     description: z.string().max(500),
     color: eventColorSchema,
+    /**
+     * Quem fixou — ou null, que é o padrão.
+     *
+     * Este é o único lugar do site onde autoria existe num dado de
+     * leitura, e só existe porque a pessoa escolheu assinar. O servidor
+     * não pode gravar isso quando ela não escolheu: omitir no JSON e
+     * guardar assim mesmo seria o mesmo vazamento adiado do
+     * `ownerUsername` dos posts.
+     *
+     * Evento é logística, não fofoca — saber quem organiza o jantar é
+     * útil e não entrega segredo nenhum. Comentário é outra conversa.
+     */
+    authorName: z.string().max(50).nullable(),
     /** Quantos confirmaram. Agregado: a API nunca diz QUEM. */
     goingCount: z.number().int().nonnegative(),
     /**
@@ -334,6 +347,14 @@ export const createEventSchema = z.object({
     .max(120, 'cabe em 120 caracteres'),
   time: horaSchema.default(null),
   place: z.string().trim().max(120, 'o local cabe em 120 caracteres').default(''),
+  /**
+   * Assinar o evento com o próprio apelido. Padrão: não.
+   *
+   * O front manda a intenção; quem resolve o nome é o servidor, a partir
+   * do token. Mandar o nome daqui deixaria qualquer um assinar como
+   * qualquer pessoa.
+   */
+  signed: z.boolean().default(false),
   color: eventColorSchema,
 });
 

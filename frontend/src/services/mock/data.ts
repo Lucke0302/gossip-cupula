@@ -376,6 +376,7 @@ export type MockEvent = {
   place: string;
   description: string;
   color: string;
+  authorName: string | null;
   goingCount: number;
   isGoing: boolean;
 };
@@ -404,6 +405,7 @@ export const events: MockEvent[] = [
     description:
       'convite só por mensagem que some. dress code: "discreto". ninguém vai ser discreto.',
     color: '#E8763A',
+    authorName: null,
     goingCount: 9,
     isGoing: false,
   },
@@ -416,6 +418,7 @@ export const events: MockEvent[] = [
     description:
       'a mesma lista de convidados da festa que terminou em choro no banheiro. só que agora com DJ.',
     color: '#E86B9E',
+    authorName: null,
     goingCount: 23,
     isGoing: false,
   },
@@ -428,6 +431,7 @@ export const events: MockEvent[] = [
     description:
       'alguém vai cantar uma música com indireta. a aposta da casa é na de sempre.',
     color: '#6BB9E8',
+    authorName: null,
     goingCount: 14,
     isGoing: false,
   },
@@ -439,6 +443,7 @@ export const events: MockEvent[] = [
     place: 'salão da cúpula',
     description: 'finalmente um evento onde todo mundo é anônimo. o paraíso.',
     color: '#E8D44D',
+    authorName: 'convidada',
     goingCount: 31,
     isGoing: false,
   },
@@ -450,6 +455,7 @@ export const events: MockEvent[] = [
     place: 'endereço sai no dia',
     description: 'fantasia obrigatória. a de "ex arrependida" já está esgotada.',
     color: '#8DC63F',
+    authorName: null,
     goingCount: 18,
     isGoing: false,
   },

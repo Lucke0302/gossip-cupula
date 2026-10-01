@@ -36,7 +36,7 @@ const SECTIONS = [
 ];
 
 export default function EventsPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, nickname } = useAuth();
   const { push } = useToast();
 
   const [mesCorrente, setMesCorrente] = useState(() => {
@@ -176,10 +176,18 @@ export default function EventsPage() {
           <EventDetailCard
             chaveDoDiaSelecionado={chaveSelecionada}
             evento={eventoSelecionado}
+            nickname={nickname}
             ocupado={ocupado}
-            onFixar={({ titulo, hora, local, cor }) =>
+            onFixar={({ titulo, hora, local, cor, assinar }) =>
               fixar.mutate(
-                { date: chaveSelecionada, title: titulo, time: hora, place: local, color: cor },
+                {
+                  date: chaveSelecionada,
+                  title: titulo,
+                  time: hora,
+                  place: local,
+                  color: cor,
+                  signed: assinar,
+                },
                 {
                   onSuccess: () => push('estrelinha fixada. agora é compromisso.', 'success'),
                   onError: (erro) => push(messageFor(erro), 'error'),

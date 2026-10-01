@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card } from './Card';
 import { EventStar } from './EventStar';
-import { Button } from './ui';
+import { Button, Checkbox } from './ui';
 import {
   DIAS_DA_SEMANA,
   diaDaChave,
@@ -21,6 +21,7 @@ const CAMPO =
 export function EventDetailCard({
   chaveDoDiaSelecionado,
   evento,
+  nickname,
   ocupado,
   onFixar,
   onDesfixar,
@@ -28,12 +29,15 @@ export function EventDetailCard({
 }: {
   chaveDoDiaSelecionado: string;
   evento: CalendarEvent | undefined;
+  /** Apelido de quem está logado, para a opção de assinar. */
+  nickname: string | null;
   ocupado: boolean;
   onFixar: (dados: {
     titulo: string;
     hora: string | null;
     local: string;
     cor: EventColor;
+    assinar: boolean;
   }) => void;
   onDesfixar: (id: string) => void;
   onConfirmar: (id: string) => void;
@@ -41,6 +45,7 @@ export function EventDetailCard({
   const [rascunho, setRascunho] = useState('');
   const [hora, setHora] = useState<string | null>(null);
   const [local, setLocal] = useState('');
+  const [assinar, setAssinar] = useState(false);
   const [cor, setCor] = useState<EventColor>(EVENT_COLORS[0]);
 
   const dia = diaDaChave(chaveDoDiaSelecionado);
@@ -63,6 +68,17 @@ export function EventDetailCard({
               {formatarHora(evento.time)} · {evento.place}
             </p>
             <p className="mt-[7px] font-body text-post text-body">{evento.description}</p>
+
+            {/*
+              Só aparece quando a pessoa escolheu assinar. A ausência da
+              linha já significa anônimo — o padrão da casa não precisa
+              de legenda.
+            */}
+            {evento.authorName ? (
+              <p className="mt-2 font-body text-[11px] text-[#666]">
+                fixado por <span className="text-eventos">{evento.authorName}</span>
+              </p>
+            ) : null}
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="font-body text-[11px] text-[#666]">
@@ -149,6 +165,27 @@ export function EventDetailCard({
               </div>
             </div>
 
+            {/*
+              A exceção do site: aqui dá pra assinar. Evento é logística,
+              não fofoca — quem organiza o jantar costuma querer ser
+              encontrável. Padrão continua anônimo.
+            */}
+            {nickname ? (
+              <div className="mt-2.5">
+                <Checkbox
+                  id="assinar-evento"
+                  checked={assinar}
+                  onChange={(evt) => setAssinar(evt.target.checked)}
+                  label={
+                    <>
+                      assinar como <span className="text-eventos">{nickname}</span> — senão fica
+                      anônimo
+                    </>
+                  }
+                />
+              </div>
+            ) : null}
+
             <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-[7px]">
                 <span className="font-body text-[11px] text-[#666]">cor:</span>
@@ -170,10 +207,11 @@ export function EventDetailCard({
               <Button
                 disabled={ocupado || rascunho.trim().length < 3}
                 onClick={() => {
-                  onFixar({ titulo: rascunho, hora, local, cor });
+                  onFixar({ titulo: rascunho, hora, local, cor, assinar });
                   setRascunho('');
                   setHora(null);
                   setLocal('');
+                  setAssinar(false);
                 }}
               >
                 {ocupado ? 'fixando…' : 'fixar estrelinha'}

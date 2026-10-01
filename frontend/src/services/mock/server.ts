@@ -439,14 +439,16 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
     method: 'POST',
     pattern: /^\/events$/,
     handler: (_init) => {
-      if (!readSession()) return unauthorized();
+      const session = readSession();
+      if (!session) return unauthorized();
 
-      const { date, title, time, place, color } = parseBody<{
+      const { date, title, time, place, color, signed } = parseBody<{
         date?: string;
         title?: string;
         time?: string | null;
         place?: string;
         color?: string;
+        signed?: boolean;
       }>(_init);
 
       if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'data inválida');
@@ -461,7 +463,12 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
         // e' texto de tela, nao valor guardado.
         time: time && /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : null,
         place: place?.trim() || 'local em segredo',
-        description: 'marcado anonimamente. quem sabe, sabe.',
+        description: signed
+          ? 'marcado por alguém que não se importou em assinar.'
+          : 'marcado anonimamente. quem sabe, sabe.',
+        // Quem resolve o nome é o servidor, a partir de quem está logado.
+        // Se não assinou, o nome não é gravado — não é "gravar e esconder".
+        authorName: signed ? session.nickname : null,
         color,
         goingCount: 1,
         isGoing: true,

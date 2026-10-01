@@ -202,7 +202,7 @@ Todas exigem `[Authorize]`, como o resto dos dados.
 | método   | rota                   | corpo                       | resposta                                  |
 | -------- | ---------------------- | --------------------------- | ----------------------------------------- |
 | `GET`    | `/events?month=YYYY-MM` | —                           | `{ items: Event[], nextCursor: null }`    |
-| `POST`   | `/events`              | `{ date, title, time, place, color }` | `Event` (201)                |
+| `POST`   | `/events`              | `{ date, title, time, place, color, signed }` | `Event` (201)        |
 | `DELETE` | `/events/{id}`         | —                           | `204`                                     |
 | `POST`   | `/events/{id}/going`   | —                           | `{ eventId, goingCount, isGoing }`        |
 
@@ -216,6 +216,7 @@ Todas exigem `[Authorize]`, como o resto dos dados.
   "place": "salão da cúpula",
   "description": "...",
   "color": "#E86B9E",          // uma das 5 cores do design
+  "authorName": "marcella",     // null quando não assinou (o padrão)
   "goingCount": 31,            // agregado
   "isGoing": false             // se QUEM PEDIU confirmou
 }
@@ -223,11 +224,26 @@ Todas exigem `[Authorize]`, como o resto dos dados.
 
 **Três coisas que o contrato assume, e por quê:**
 
-1. **Evento não tem autor.** Igual a post e comentário. Consequência direta:
-   não existe dono para conferir, então **qualquer pessoa da cúpula pode
-   desfixar** o que foi fixado. Se vocês preferirem restringir a Admin, é uma
-   linha no controller — mas aí o botão "desfixar" precisa sumir para quem não
-   é admin, e eu ajusto o front.
+1. **Assinar é opcional, e é a única exceção do site.** `authorName` vem
+   preenchido só quando a pessoa marcou "assinar"; caso contrário é `null`.
+
+   **Regra que o servidor precisa seguir: quando `signed` é `false`, a autoria
+   não é gravada.** Guardar o autor e só omitir no JSON seria o mesmo vazamento
+   adiado do `ownerUsername` dos posts — o dado existiria no banco esperando o
+   próximo bug de serialização.
+
+   O nome sai do **token**, nunca do corpo: o front manda apenas a intenção
+   (`signed: true`), senão qualquer um assinaria como qualquer pessoa.
+
+   Por que aqui pode e nos posts não: **evento é logística, não fofoca**. Saber
+   quem organiza o jantar é útil e não entrega segredo. Para comentários a
+   conversa é outra — assinaturas parciais tornam os anônimos da mesma thread
+   dedutíveis por eliminação, e num grupo pequeno isso identifica gente.
+
+   `authorName` é **assinatura, não propriedade**: não há dono para conferir,
+   então **qualquer pessoa da cúpula pode desfixar**. Se preferirem restringir
+   a Admin (ou a quem assinou), é uma linha no controller — aí o botão
+   "desfixar" some para os outros e eu ajusto o front.
 2. **`goingCount` é agregado e `isGoing` é só seu.** O servidor nunca devolve a
    lista de quem confirmou; ele olha o token de quem chamou e responde só sobre
    essa pessoa. Foi assim que os votos de post *deveriam* ter sido feitos — lá
