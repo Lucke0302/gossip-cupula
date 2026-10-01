@@ -233,3 +233,129 @@ export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+/* ------------------------------ eventos ------------------------------ */
+
+/**
+ * Cores possiveis da estrelinha. Sao as mesmas das secoes do design —
+ * rosa (eventos), coral (fofocas), amarelo (fotos), azul (welcome) e
+ * verde (links).
+ */
+export const EVENT_COLORS = ['#E86B9E', '#E8763A', '#E8D44D', '#6BB9E8', '#8DC63F'] as const;
+
+export const eventColorSchema = z.enum(EVENT_COLORS);
+
+/** "HH:mm" em 24h, ou null para "horário a confirmar". */
+export const horaSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'horário deve ser HH:mm')
+  .nullable();
+
+/**
+ * As opcoes do seletor: de meia-noite as 23h30, de meia em meia hora.
+ *
+ * Lista fechada em vez de campo livre — assim o valor que sai daqui
+ * sempre entra num TimeOnly/TimeSpan do lado do servidor.
+ */
+export const HORARIOS = Array.from({ length: 48 }, (_, i) => {
+  const hora = String(Math.floor(i / 2)).padStart(2, '0');
+  const minuto = i % 2 === 0 ? '00' : '30';
+  return `${hora}:${minuto}`;
+});
+
+/**
+ * Um compromisso fixado no calendario.
+ *
+ * Igual a Post e Comment: NAO tem autor. Quem fixou a estrelinha some no
+ * caminho — e' de proposito, e' o mesmo requisito do resto do site. Por
+ * consequencia, qualquer pessoa da cupula pode desfixar o que foi
+ * fixado; nao existe dono pra conferir.
+ */
+export const eventSchema = z
+  .object({
+    id: opaqueIdSchema,
+    /** Data do evento, YYYY-MM-DD. O grao e' o dia: sem hora exata aqui. */
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'data deve ser YYYY-MM-DD'),
+    title: z.string().min(1).max(120),
+    /** Texto livre: "22h", "horário a confirmar". Nao e' timestamp. */
+    /**
+     * Horario em "HH:mm" 24h, ou null quando ainda nao foi definido.
+     *
+     * Era texto livre ("22h", "depois do jantar"), o que seria uma
+     * armadilha pro backend: na hora de tipar isso como TimeOnly, cada
+     * string criativa viraria erro de parse. Agora o formato e' fechado
+     * — a tela escolhe numa lista e exibe no estilo brasileiro ("22h30"),
+     * mas o que trafega e' sempre "22:30".
+     */
+    time: horaSchema,
+    place: z.string().max(120),
+    description: z.string().max(500),
+    color: eventColorSchema,
+    /**
+     * Quem fixou — ou null, que é o padrão.
+     *
+     * Este é o único lugar do site onde autoria existe num dado de
+     * leitura, e só existe porque a pessoa escolheu assinar. O servidor
+     * não pode gravar isso quando ela não escolheu: omitir no JSON e
+     * guardar assim mesmo seria o mesmo vazamento adiado do
+     * `ownerUsername` dos posts.
+     *
+     * Evento é logística, não fofoca — saber quem organiza o jantar é
+     * útil e não entrega segredo nenhum. Comentário é outra conversa.
+     */
+    authorName: z.string().max(50).nullable(),
+    /** Quantos confirmaram. Agregado: a API nunca diz QUEM. */
+    goingCount: z.number().int().nonnegative(),
+    /**
+     * Se VOCE confirmou. E' o unico dado pessoal do objeto, e so' faz
+     * sentido pra quem pediu — o servidor responde isso olhando o token
+     * de quem chamou, nunca expondo a lista de confirmados.
+     */
+    isGoing: z.boolean(),
+  })
+  .strict();
+
+export const goingResultSchema = z
+  .object({
+    eventId: z.string(),
+    goingCount: z.number().int().nonnegative(),
+    isGoing: z.boolean(),
+  })
+  .strict();
+
+export type EventColor = z.infer<typeof eventColorSchema>;
+export type CalendarEvent = z.infer<typeof eventSchema>;
+export type GoingResult = z.infer<typeof goingResultSchema>;
+
+/**
+ * Campos do formulario de novo evento.
+ *
+ * Hora e local sao opcionais: fixar uma estrelinha tem que ser rapido,
+ * mas isso aqui e' uma agenda — quem ja' sabe onde e que horas consegue
+ * dizer na hora. Vazio vira o padrao de "marcado anonimamente".
+ *
+ *  e' texto livre ("22h", "depois do jantar") e nao timestamp:
+ * hora exata em campo de data convida ordenacao por minuto, que e' o
+ * tipo de metadado que o resto do site evita.
+ */
+export const createEventSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  title: z
+    .string()
+    .trim()
+    .min(3, 'conta pelo menos o que vai rolar')
+    .max(120, 'cabe em 120 caracteres'),
+  time: horaSchema.default(null),
+  place: z.string().trim().max(120, 'o local cabe em 120 caracteres').default(''),
+  /**
+   * Assinar o evento com o próprio apelido. Padrão: não.
+   *
+   * O front manda a intenção; quem resolve o nome é o servidor, a partir
+   * do token. Mandar o nome daqui deixaria qualquer um assinar como
+   * qualquer pessoa.
+   */
+  signed: z.boolean().default(false),
+  color: eventColorSchema,
+});
+
+export type CreateEventInput = z.infer<typeof createEventSchema>;

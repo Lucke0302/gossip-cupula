@@ -30,6 +30,8 @@ export default {
         serif: ['Georgia', 'Times New Roman', 'serif'],
         body: ['Verdana', 'Arial', 'sans-serif'],
         mono: ['ui-monospace', 'Menlo', 'monospace'],
+        // Letra de mao do calendario de eventos.
+        hand: ['Reenie Beanie', 'Bradley Hand', 'Segoe Script', 'cursive'],
       },
       fontSize: {
         // corpo denso de 2008

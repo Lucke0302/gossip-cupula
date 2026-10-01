@@ -1,4 +1,5 @@
 import { Card } from '../components/Card';
+import { DevNotice } from '../components/DevNotice';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Layout } from '../components/Layout';
@@ -46,6 +47,10 @@ export default function LinksPage() {
 
   return (
     <Layout sections={SECTIONS}>
+      <div className="mb-4">
+        <DevNotice oQueFalta="os links de verdade chegam quando a rota existir na API." />
+      </div>
+
       <h1 className="mb-4 text-center font-display text-[28px] font-light text-links">links</h1>
 
       {links.isPending ? (

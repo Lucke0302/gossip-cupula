@@ -3,11 +3,13 @@ import {
   adminUsers,
   comments,
   coarse,
+  events,
   links,
   opaqueId,
   photos,
   posts,
   type MockComment,
+  type MockEvent,
   type MockPost,
 } from './data';
 import { USE_MOCKS } from '../../lib/env';
@@ -419,6 +421,89 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
 
       adminUsers.splice(indice, 1);
       return new Response(null, { status: 204 });
+    },
+  },
+
+  {
+    method: 'GET',
+    pattern: /^\/events$/,
+    handler: (_init, _params, url) => {
+      if (!readSession()) return unauthorized();
+      // Filtra pelo mes pedido (YYYY-MM). Sem mes, devolve tudo.
+      const mes = url.searchParams.get('month');
+      const items = mes ? events.filter((e) => e.date.startsWith(mes)) : events;
+      return json({ items: [...items].sort((a, b) => a.date.localeCompare(b.date)), nextCursor: null });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/events$/,
+    handler: (_init) => {
+      const session = readSession();
+      if (!session) return unauthorized();
+
+      const { date, title, time, place, color, signed } = parseBody<{
+        date?: string;
+        title?: string;
+        time?: string | null;
+        place?: string;
+        color?: string;
+        signed?: boolean;
+      }>(_init);
+
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'data inválida');
+      if (!title?.trim()) return fail(400, 'conta pelo menos o que vai rolar');
+      if (!color) return fail(400, 'escolhe uma cor');
+
+      const criado: MockEvent = {
+        id: opaqueId(),
+        date,
+        title: title.trim(),
+        // Hora e local sao opcionais. Hora vazia fica null: "a confirmar"
+        // e' texto de tela, nao valor guardado.
+        time: time && /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : null,
+        place: place?.trim() || 'local em segredo',
+        description: signed
+          ? 'marcado por alguém que não se importou em assinar.'
+          : 'marcado anonimamente. quem sabe, sabe.',
+        // Quem resolve o nome é o servidor, a partir de quem está logado.
+        // Se não assinou, o nome não é gravado — não é "gravar e esconder".
+        authorName: signed ? session.nickname : null,
+        color,
+        goingCount: 1,
+        isGoing: true,
+      };
+
+      events.push(criado);
+      return json(criado, 201);
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/events\/([^/]+)$/,
+    handler: (_init, params) => {
+      if (!readSession()) return unauthorized();
+      const indice = events.findIndex((e) => e.id === params.id);
+      if (indice < 0) return fail(404, 'esse evento não existe (ou já sumiu)');
+      events.splice(indice, 1);
+      return new Response(null, { status: 204 });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/events\/([^/]+)\/going$/,
+    handler: (_init, params) => {
+      if (!readSession()) return unauthorized();
+      const evento = events.find((e) => e.id === params.id);
+      if (!evento) return fail(404, 'esse evento não existe (ou já sumiu)');
+
+      evento.isGoing = !evento.isGoing;
+      evento.goingCount = Math.max(evento.goingCount + (evento.isGoing ? 1 : -1), 0);
+      return json({
+        eventId: evento.id,
+        goingCount: evento.goingCount,
+        isGoing: evento.isGoing,
+      });
     },
   },
 

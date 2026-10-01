@@ -8,6 +8,7 @@ const ITEMS = [
   { to: '/', label: 'home', end: true },
   { to: '/novo', label: 'posts', end: false },
   { to: '/fotos', label: 'fotos', end: false },
+  { to: '/eventos', label: 'eventos', end: false },
   { to: '/links', label: 'links', end: false },
 ] as const;
 

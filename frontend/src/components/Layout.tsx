@@ -12,6 +12,15 @@ type Props = {
   wordmark?: 'hero' | 'page';
   /** Telas de login/cadastro não têm menu nem avatares. */
   bare?: boolean;
+  /**
+   * Coluna central mais larga (580px, como no canvas de eventos). O
+   * calendário precisa de 7 colunas confortáveis; 464px aperta demais.
+   */
+  width?: 'normal' | 'wide';
+  /** Bloco encaixado no menu lateral (ex.: 'próximos babados'). */
+  sidebarExtra?: ReactNode;
+  /** Chave da seção depois da qual o bloco entra. */
+  sidebarExtraAfter?: string;
 };
 
 /**
@@ -19,7 +28,17 @@ type Props = {
  * No mobile vira uma coluna só, com os avatares em linha rolável no topo
  * e o menu de texto no rodapé — igual às telas 390px do canvas.
  */
-export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page', bare = false }: Props) {
+export function Layout({
+  children,
+  sections = DEFAULT_SECTIONS,
+  wordmark = 'page',
+  bare = false,
+  width = 'normal',
+  sidebarExtra,
+  sidebarExtraAfter,
+}: Props) {
+  const larguraConteudo = width === 'wide' ? 'max-w-[580px]' : 'max-w-[464px]';
+  const larguraContainer = width === 'wide' ? 'max-w-[1140px]' : 'max-w-[1024px]';
   const { isAuthenticated, nickname, role, logout } = useAuth();
 
   return (
@@ -45,10 +64,15 @@ export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page
             <AvatarNav orientation="horizontal" />
           </div>
 
-          <div className="mx-auto flex w-full max-w-[1024px] items-start justify-center gap-10 px-4 pt-4 sm:pt-6">
-            <Sidebar sections={sections} className="hidden w-[200px] flex-none pt-1 lg:flex" />
+          <div className={`mx-auto flex w-full ${larguraContainer} items-start justify-center gap-10 px-4 pt-4 sm:pt-6`}>
+            <Sidebar
+              sections={sections}
+              extra={sidebarExtra}
+              extraAfter={sidebarExtraAfter}
+              className="hidden w-[200px] flex-none pt-1 lg:flex"
+            />
 
-            <main id="conteudo" className="w-full max-w-[464px] flex-none">
+            <main id="conteudo" className={`w-full ${larguraConteudo} flex-none`}>
               {children}
             </main>
 
@@ -57,13 +81,13 @@ export function Layout({ children, sections = DEFAULT_SECTIONS, wordmark = 'page
             </div>
           </div>
 
-          <div className="mx-auto mt-8 w-full max-w-[464px] border-t border-wordmark/10 px-4 pt-7 lg:hidden">
-            <Sidebar sections={sections} />
+          <div className={`mx-auto mt-8 w-full ${larguraConteudo} border-t border-wordmark/10 px-4 pt-7 lg:hidden`}>
+            <Sidebar sections={sections} extra={sidebarExtra} extraAfter={sidebarExtraAfter} />
           </div>
         </>
       )}
 
-      <footer className="mx-auto mt-10 w-full max-w-[464px] px-4 text-center font-body text-[11px] leading-[1.6] text-[#8a8a80]">
+      <footer className={`mx-auto mt-10 w-full ${larguraConteudo} px-4 text-center font-body text-[11px] leading-[1.6] text-[#8a8a80]`}>
         {isAuthenticated ? (
           <p>
             você entrou como <span className="text-muted-dim">{nickname}</span> — e isso não aparece

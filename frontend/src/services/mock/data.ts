@@ -365,3 +365,98 @@ export const adminUsers: MockUser[] = [
     createdAt: hoursAgo(3),
   },
 ];
+
+/* ------------------------------ eventos ------------------------------ */
+
+export type MockEvent = {
+  id: string;
+  date: string;
+  title: string;
+  time: string | null;
+  place: string;
+  description: string;
+  color: string;
+  authorName: string | null;
+  goingCount: number;
+  isGoing: boolean;
+};
+
+/** Data YYYY-MM-DD do dia `dia` no mes corrente. */
+function diaDesteMes(dia: number): string {
+  const agora = new Date();
+  const mes = String(agora.getMonth() + 1).padStart(2, '0');
+  return `${agora.getFullYear()}-${mes}-${String(dia).padStart(2, '0')}`;
+}
+
+/**
+ * Os eventos de mentira sao os do canvas do design, ancorados no mes
+ * atual pra tela ter sempre o que mostrar.
+ *
+ * Repare: nenhum deles tem autor. Quem fixou a estrelinha nao existe no
+ * registro, igual aos posts.
+ */
+export const events: MockEvent[] = [
+  {
+    id: 'Ev1aBcDeFgHi',
+    date: diaDesteMes(3),
+    title: 'jantar do 2º andar',
+    time: '20:30',
+    place: 'o apê com varanda — vocês sabem qual',
+    description:
+      'convite só por mensagem que some. dress code: "discreto". ninguém vai ser discreto.',
+    color: '#E8763A',
+    authorName: null,
+    goingCount: 9,
+    isGoing: false,
+  },
+  {
+    id: 'Ev2bCdEfGhIj',
+    date: diaDesteMes(10),
+    title: 'festa no terraço',
+    time: '22:00',
+    place: 'cobertura da torre B',
+    description:
+      'a mesma lista de convidados da festa que terminou em choro no banheiro. só que agora com DJ.',
+    color: '#E86B9E',
+    authorName: null,
+    goingCount: 23,
+    isGoing: false,
+  },
+  {
+    id: 'Ev3cDeFgHiJk',
+    date: diaDesteMes(17),
+    title: 'noite do karaokê',
+    time: '21:00',
+    place: 'aquele bar de sempre',
+    description:
+      'alguém vai cantar uma música com indireta. a aposta da casa é na de sempre.',
+    color: '#6BB9E8',
+    authorName: null,
+    goingCount: 14,
+    isGoing: false,
+  },
+  {
+    id: 'Ev4dEfGhIjKl',
+    date: diaDesteMes(24),
+    title: 'baile de máscaras',
+    time: '23:00',
+    place: 'salão da cúpula',
+    description: 'finalmente um evento onde todo mundo é anônimo. o paraíso.',
+    color: '#E8D44D',
+    authorName: 'convidada',
+    goingCount: 31,
+    isGoing: false,
+  },
+  {
+    id: 'Ev5eFgHiJkLm',
+    date: diaDesteMes(28),
+    title: 'halloween da cúpula',
+    time: '22:00',
+    place: 'endereço sai no dia',
+    description: 'fantasia obrigatória. a de "ex arrependida" já está esgotada.',
+    color: '#8DC63F',
+    authorName: null,
+    goingCount: 18,
+    isGoing: false,
+  },
+];

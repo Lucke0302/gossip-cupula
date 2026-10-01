@@ -187,9 +187,85 @@ de uso único enviado por e-mail.
 
 | o que falta          | efeito no front                                                     |
 | -------------------- | -------------------------------------------------------------------- |
-| comentários          | `/posts/{id}/comments` (GET/POST) não existe — o front usa mocks     |
+| **eventos**          | `/events` não existe — a tela `/eventos` roda inteira em mocks (contrato abaixo) |
 | fotos e links        | `/photos` e `/links` não existem — idem                              |
 | paginação            | `GET /posts` devolve o array inteiro; a fatia é feita no cliente     |
+
+#### Contrato dos eventos (o calendário)
+
+A tela `/eventos` está pronta e funciona em mocks. Para ligá-la na API, basta
+implementar as quatro rotas abaixo e remover `source: 'mock'` de
+`src/services/events.service.ts` — nenhuma tela muda.
+
+Todas exigem `[Authorize]`, como o resto dos dados.
+
+| método   | rota                   | corpo                       | resposta                                  |
+| -------- | ---------------------- | --------------------------- | ----------------------------------------- |
+| `GET`    | `/events?month=YYYY-MM` | —                           | `{ items: Event[], nextCursor: null }`    |
+| `POST`   | `/events`              | `{ date, title, time, place, color, signed }` | `Event` (201)        |
+| `DELETE` | `/events/{id}`         | —                           | `204`                                     |
+| `POST`   | `/events/{id}/going`   | —                           | `{ eventId, goingCount, isGoing }`        |
+
+```jsonc
+// Event
+{
+  "id": "uuid",
+  "date": "2026-10-24",        // YYYY-MM-DD, sem hora: o grão é o dia
+  "title": "baile de máscaras",
+  "time": "23:00",             // "HH:mm" 24h, ou null = a confirmar
+  "place": "salão da cúpula",
+  "description": "...",
+  "color": "#E86B9E",          // uma das 5 cores do design
+  "authorName": "marcella",     // null quando não assinou (o padrão)
+  "goingCount": 31,            // agregado
+  "isGoing": false             // se QUEM PEDIU confirmou
+}
+```
+
+**Três coisas que o contrato assume, e por quê:**
+
+1. **Assinar é opcional, e é a única exceção do site.** `authorName` vem
+   preenchido só quando a pessoa marcou "assinar"; caso contrário é `null`.
+
+   **Regra que o servidor precisa seguir: quando `signed` é `false`, a autoria
+   não é gravada.** Guardar o autor e só omitir no JSON seria o mesmo vazamento
+   adiado do `ownerUsername` dos posts — o dado existiria no banco esperando o
+   próximo bug de serialização.
+
+   O nome sai do **token**, nunca do corpo: o front manda apenas a intenção
+   (`signed: true`), senão qualquer um assinaria como qualquer pessoa.
+
+   Por que aqui pode e nos posts não: **evento é logística, não fofoca**. Saber
+   quem organiza o jantar é útil e não entrega segredo. Para comentários a
+   conversa é outra — assinaturas parciais tornam os anônimos da mesma thread
+   dedutíveis por eliminação, e num grupo pequeno isso identifica gente.
+
+   `authorName` é **assinatura, não propriedade**: não há dono para conferir,
+   então **qualquer pessoa da cúpula pode desfixar**. Se preferirem restringir
+   a Admin (ou a quem assinou), é uma linha no controller — aí o botão
+   "desfixar" some para os outros e eu ajusto o front.
+2. **`goingCount` é agregado e `isGoing` é só seu.** O servidor nunca devolve a
+   lista de quem confirmou; ele olha o token de quem chamou e responde só sobre
+   essa pessoa. Foi assim que os votos de post *deveriam* ter sido feitos — lá
+   a API não expõe o voto do usuário, e o front teve que lembrar em
+   `localStorage` (`src/lib/votes.ts`). Aqui dá para nascer certo.
+3. **`time` é `"HH:mm"` ou `null`, nunca texto livre.** A tela usa um `select`
+   de meia em meia hora, então o que chega na API é sempre `"22:30"` — pode
+   virar `TimeOnly`/`TimeSpan` no modelo sem nenhum parse defensivo. `null`
+   significa "a confirmar"; esse texto é da tela, não do dado.
+
+   A exibição em português ("22h30", "22h") acontece só no front
+   (`formatarHora`, em `src/lib/calendar.ts`) — o formato guardado não muda.
+
+   > Chegamos aqui depois de uma primeira versão com campo livre. Funcionava na
+   > tela, mas jogava o problema pro servidor: "22h", "depois do jantar" e
+   > "umas 10" não entram num tipo de hora. Melhor fechar na origem.
+
+No `POST /events`, **`time` e `place` são opcionais**: fixar uma estrelinha tem
+que continuar rápido, mas isto é uma agenda — quem já sabe onde e que horas diz
+na hora. Vindo vazios, o servidor preenche com `"horário a confirmar"` e
+`"local em segredo"`. `description` nasce com `"marcado anonimamente. quem sabe,
+sabe."`; mudar isso pediria uma rota de edição, que hoje não existe.
 
 **Imagem no post já existe.** `POST /api/posts` recebe `multipart/form-data`
 (`Text` obrigatório, `Title` opcional e `Images` com zero a dez arquivos de até
@@ -214,7 +290,8 @@ src/services/
   posts.service.ts       escolhe a fonte (mocks ou API) e expõe uma só interface
   backend/dto.ts         DTO real da API + conversão para o domínio anônimo
   backend/posts.ts       posts contra a API, com paginação feita no cliente
-  comments.service.ts    presos em mocks: a API não tem essas rotas
+  comments.service.ts    comentários, já contra a API
+  events.service.ts      eventos do calendário — preso em mocks, a API não tem as rotas
   gallery.service.ts     idem
   mock/                  dados e servidor falso
 src/lib/
@@ -273,6 +350,7 @@ O formato exato de cada tipo está em `src/types/index.ts` — os schemas Zod
 | `/conta-pendente` | aviso de conta aguardando liberação    | não       |
 | `/links`          | links                                  | sim       |
 | `/fotos`          | galeria                                | sim       |
+| `/eventos`        | calendário rabiscado de eventos        | sim       |
 | `*`               | 404 no mesmo visual                    | não       |
 
 Todas as rotas são `lazy`, cada uma no seu chunk.
