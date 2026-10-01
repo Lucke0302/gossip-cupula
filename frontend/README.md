@@ -212,7 +212,7 @@ Todas exigem `[Authorize]`, como o resto dos dados.
   "id": "uuid",
   "date": "2026-10-24",        // YYYY-MM-DD, sem hora: o grão é o dia
   "title": "baile de máscaras",
-  "time": "23h",               // texto livre, NÃO timestamp
+  "time": "23:00",             // "HH:mm" 24h, ou null = a confirmar
   "place": "salão da cúpula",
   "description": "...",
   "color": "#E86B9E",          // uma das 5 cores do design
@@ -233,9 +233,17 @@ Todas exigem `[Authorize]`, como o resto dos dados.
    essa pessoa. Foi assim que os votos de post *deveriam* ter sido feitos — lá
    a API não expõe o voto do usuário, e o front teve que lembrar em
    `localStorage` (`src/lib/votes.ts`). Aqui dá para nascer certo.
-3. **`time` é texto, não timestamp.** "22h", "horário a confirmar". Hora exata
-   em campo de data convida a ordenação por minuto, que é o tipo de metadado
-   que o resto do site evita de propósito.
+3. **`time` é `"HH:mm"` ou `null`, nunca texto livre.** A tela usa um `select`
+   de meia em meia hora, então o que chega na API é sempre `"22:30"` — pode
+   virar `TimeOnly`/`TimeSpan` no modelo sem nenhum parse defensivo. `null`
+   significa "a confirmar"; esse texto é da tela, não do dado.
+
+   A exibição em português ("22h30", "22h") acontece só no front
+   (`formatarHora`, em `src/lib/calendar.ts`) — o formato guardado não muda.
+
+   > Chegamos aqui depois de uma primeira versão com campo livre. Funcionava na
+   > tela, mas jogava o problema pro servidor: "22h", "depois do jantar" e
+   > "umas 10" não entram num tipo de hora. Melhor fechar na origem.
 
 No `POST /events`, **`time` e `place` são opcionais**: fixar uma estrelinha tem
 que continuar rápido, mas isto é uma agenda — quem já sabe onde e que horas diz

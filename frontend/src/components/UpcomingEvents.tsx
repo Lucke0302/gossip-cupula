@@ -1,4 +1,4 @@
-import { diaDaChave } from '../lib/calendar';
+import { diaDaChave, formatarHora } from '../lib/calendar';
 import type { CalendarEvent } from '../types';
 
 /**
@@ -41,7 +41,7 @@ export function UpcomingEvents({
                 <span className="font-body text-[11px] leading-[1.3] text-muted-dark">
                   <span className="text-welcome underline">{evento.title}</span>
                   <br />
-                  <span className="text-[#8f8f84]">{evento.time}</span>
+                  <span className="text-[#8f8f84]">{formatarHora(evento.time)}</span>
                 </span>
               </button>
             </li>

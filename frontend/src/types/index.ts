@@ -245,6 +245,24 @@ export const EVENT_COLORS = ['#E86B9E', '#E8763A', '#E8D44D', '#6BB9E8', '#8DC63
 
 export const eventColorSchema = z.enum(EVENT_COLORS);
 
+/** "HH:mm" em 24h, ou null para "horário a confirmar". */
+export const horaSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'horário deve ser HH:mm')
+  .nullable();
+
+/**
+ * As opcoes do seletor: de meia-noite as 23h30, de meia em meia hora.
+ *
+ * Lista fechada em vez de campo livre — assim o valor que sai daqui
+ * sempre entra num TimeOnly/TimeSpan do lado do servidor.
+ */
+export const HORARIOS = Array.from({ length: 48 }, (_, i) => {
+  const hora = String(Math.floor(i / 2)).padStart(2, '0');
+  const minuto = i % 2 === 0 ? '00' : '30';
+  return `${hora}:${minuto}`;
+});
+
 /**
  * Um compromisso fixado no calendario.
  *
@@ -260,7 +278,16 @@ export const eventSchema = z
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'data deve ser YYYY-MM-DD'),
     title: z.string().min(1).max(120),
     /** Texto livre: "22h", "horário a confirmar". Nao e' timestamp. */
-    time: z.string().max(40),
+    /**
+     * Horario em "HH:mm" 24h, ou null quando ainda nao foi definido.
+     *
+     * Era texto livre ("22h", "depois do jantar"), o que seria uma
+     * armadilha pro backend: na hora de tipar isso como TimeOnly, cada
+     * string criativa viraria erro de parse. Agora o formato e' fechado
+     * — a tela escolhe numa lista e exibe no estilo brasileiro ("22h30"),
+     * mas o que trafega e' sempre "22:30".
+     */
+    time: horaSchema,
     place: z.string().max(120),
     description: z.string().max(500),
     color: eventColorSchema,
@@ -305,7 +332,7 @@ export const createEventSchema = z.object({
     .trim()
     .min(3, 'conta pelo menos o que vai rolar')
     .max(120, 'cabe em 120 caracteres'),
-  time: z.string().trim().max(40, 'o horário cabe em 40 caracteres').default(''),
+  time: horaSchema.default(null),
   place: z.string().trim().max(120, 'o local cabe em 120 caracteres').default(''),
   color: eventColorSchema,
 });

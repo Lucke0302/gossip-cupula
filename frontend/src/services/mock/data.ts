@@ -372,7 +372,7 @@ export type MockEvent = {
   id: string;
   date: string;
   title: string;
-  time: string;
+  time: string | null;
   place: string;
   description: string;
   color: string;
@@ -399,7 +399,7 @@ export const events: MockEvent[] = [
     id: 'Ev1aBcDeFgHi',
     date: diaDesteMes(3),
     title: 'jantar do 2º andar',
-    time: '20h30',
+    time: '20:30',
     place: 'o apê com varanda — vocês sabem qual',
     description:
       'convite só por mensagem que some. dress code: "discreto". ninguém vai ser discreto.',
@@ -411,7 +411,7 @@ export const events: MockEvent[] = [
     id: 'Ev2bCdEfGhIj',
     date: diaDesteMes(10),
     title: 'festa no terraço',
-    time: '22h',
+    time: '22:00',
     place: 'cobertura da torre B',
     description:
       'a mesma lista de convidados da festa que terminou em choro no banheiro. só que agora com DJ.',
@@ -423,7 +423,7 @@ export const events: MockEvent[] = [
     id: 'Ev3cDeFgHiJk',
     date: diaDesteMes(17),
     title: 'noite do karaokê',
-    time: '21h',
+    time: '21:00',
     place: 'aquele bar de sempre',
     description:
       'alguém vai cantar uma música com indireta. a aposta da casa é na de sempre.',
@@ -435,7 +435,7 @@ export const events: MockEvent[] = [
     id: 'Ev4dEfGhIjKl',
     date: diaDesteMes(24),
     title: 'baile de máscaras',
-    time: '23h',
+    time: '23:00',
     place: 'salão da cúpula',
     description: 'finalmente um evento onde todo mundo é anônimo. o paraíso.',
     color: '#E8D44D',
@@ -446,7 +446,7 @@ export const events: MockEvent[] = [
     id: 'Ev5eFgHiJkLm',
     date: diaDesteMes(28),
     title: 'halloween da cúpula',
-    time: '22h',
+    time: '22:00',
     place: 'endereço sai no dia',
     description: 'fantasia obrigatória. a de "ex arrependida" já está esgotada.',
     color: '#8DC63F',

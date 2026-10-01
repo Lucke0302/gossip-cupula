@@ -2,8 +2,13 @@ import { useState } from 'react';
 import { Card } from './Card';
 import { EventStar } from './EventStar';
 import { Button } from './ui';
-import { DIAS_DA_SEMANA, diaDaChave, diaDaSemanaDaChave } from '../lib/calendar';
-import { EVENT_COLORS, type CalendarEvent, type EventColor } from '../types';
+import {
+  DIAS_DA_SEMANA,
+  diaDaChave,
+  diaDaSemanaDaChave,
+  formatarHora,
+} from '../lib/calendar';
+import { EVENT_COLORS, HORARIOS, type CalendarEvent, type EventColor } from '../types';
 
 /** Mesmo visual dos campos do resto do site (ui.tsx), em input solto. */
 const CAMPO =
@@ -24,12 +29,17 @@ export function EventDetailCard({
   chaveDoDiaSelecionado: string;
   evento: CalendarEvent | undefined;
   ocupado: boolean;
-  onFixar: (dados: { titulo: string; hora: string; local: string; cor: EventColor }) => void;
+  onFixar: (dados: {
+    titulo: string;
+    hora: string | null;
+    local: string;
+    cor: EventColor;
+  }) => void;
   onDesfixar: (id: string) => void;
   onConfirmar: (id: string) => void;
 }) {
   const [rascunho, setRascunho] = useState('');
-  const [hora, setHora] = useState('');
+  const [hora, setHora] = useState<string | null>(null);
   const [local, setLocal] = useState('');
   const [cor, setCor] = useState<EventColor>(EVENT_COLORS[0]);
 
@@ -50,7 +60,7 @@ export function EventDetailCard({
           <>
             <h3 className="font-serif text-[16px] leading-[1.25] text-[#222]">{evento.title}</h3>
             <p className="mt-[3px] font-body text-[11px] leading-[1.4] text-[#777]">
-              {evento.time} · {evento.place}
+              {formatarHora(evento.time)} · {evento.place}
             </p>
             <p className="mt-[7px] font-body text-post text-body">{evento.description}</p>
 
@@ -104,14 +114,25 @@ export function EventDetailCard({
                 <label htmlFor="novo-evento-hora" className="sr-only">
                   horário
                 </label>
-                <input
+                {/*
+                  Lista fechada em vez de campo livre: o valor sai daqui
+                  sempre em HH:mm, que entra direto num TimeOnly do lado
+                  do servidor. Sem horário escolhido = null, e quem
+                  escreve "a confirmar" é a tela.
+                */}
+                <select
                   id="novo-evento-hora"
-                  value={hora}
-                  onChange={(evt) => setHora(evt.target.value)}
-                  placeholder="22h"
-                  maxLength={40}
+                  value={hora ?? ''}
+                  onChange={(evt) => setHora(evt.target.value || null)}
                   className={CAMPO}
-                />
+                >
+                  <option value="">a confirmar</option>
+                  {HORARIOS.map((opcao) => (
+                    <option key={opcao} value={opcao}>
+                      {formatarHora(opcao)}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="min-w-0 flex-1">
                 <label htmlFor="novo-evento-local" className="sr-only">
@@ -151,7 +172,7 @@ export function EventDetailCard({
                 onClick={() => {
                   onFixar({ titulo: rascunho, hora, local, cor });
                   setRascunho('');
-                  setHora('');
+                  setHora(null);
                   setLocal('');
                 }}
               >

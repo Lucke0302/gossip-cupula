@@ -444,7 +444,7 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
       const { date, title, time, place, color } = parseBody<{
         date?: string;
         title?: string;
-        time?: string;
+        time?: string | null;
         place?: string;
         color?: string;
       }>(_init);
@@ -457,9 +457,9 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
         id: opaqueId(),
         date,
         title: title.trim(),
-        // Hora e local sao opcionais no formulario; vazio vira o padrao
-        // de "marcado anonimamente".
-        time: time?.trim() || 'horário a confirmar',
+        // Hora e local sao opcionais. Hora vazia fica null: "a confirmar"
+        // e' texto de tela, nao valor guardado.
+        time: time && /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : null,
         place: place?.trim() || 'local em segredo',
         description: 'marcado anonimamente. quem sabe, sabe.',
         color,

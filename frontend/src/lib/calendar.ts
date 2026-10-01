@@ -109,3 +109,15 @@ export function diaDaSemanaDaChave(chave: string): number {
   const [ano, mes, dia] = chave.split('-').map(Number);
   return new Date(ano ?? 0, (mes ?? 1) - 1, dia ?? 1).getDay();
 }
+
+/**
+ * "22:30" → "22h30", "22:00" → "22h", null → "horário a confirmar".
+ *
+ * O dado trafega em HH:mm (previsível para o servidor); o que a pessoa
+ * lê é o formato brasileiro, que é como o design escreve.
+ */
+export function formatarHora(hora: string | null): string {
+  if (!hora) return 'horário a confirmar';
+  const [h, m] = hora.split(':');
+  return m === '00' ? `${h}h` : `${h}h${m}`;
+}
