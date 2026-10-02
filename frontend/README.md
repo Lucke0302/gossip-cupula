@@ -28,7 +28,7 @@ Abre em `http://localhost:5173`.
 
 Copie `.env.example` para `.env` e escolha:
 
-**Mocks** (padrão se não houver `.env`) — navega em todas as telas sem backend:
+**Mocks** (opt-in explícito) — navega em todas as telas sem tocar na API:
 
 ```bash
 VITE_USE_MOCKS=true
@@ -187,17 +187,51 @@ de uso único enviado por e-mail.
 
 | o que falta          | efeito no front                                                     |
 | -------------------- | -------------------------------------------------------------------- |
-| **eventos**          | `/events` não existe — a tela `/eventos` roda inteira em mocks (contrato abaixo) |
 | fotos e links        | `/photos` e `/links` não existem — idem                              |
 | paginação            | `GET /posts` devolve o array inteiro; a fatia é feita no cliente     |
 
 #### Contrato dos eventos (o calendário)
 
-A tela `/eventos` está pronta e funciona em mocks. Para ligá-la na API, basta
-implementar as quatro rotas abaixo e remover `source: 'mock'` de
-`src/services/events.service.ts` — nenhuma tela muda.
+A tela `/eventos` está **ligada na API**: as quatro rotas abaixo estão
+implementadas (`Controllers/EventsController.cs` no backend) e
+`src/services/events.service.ts` não passa mais `source: 'mock'` — nenhuma tela
+mudou.
 
 Todas exigem `[Authorize]`, como o resto dos dados.
+
+> **Estado no backend.** Modelo, migration e rotas prontos: as entidades
+> `Event` e `EventPresence` estão mapeadas no `AppDbContext`, a migration
+> `20261002174905_AddEvents` está **aplicada** no banco, os DTOs vivem em
+> `DTOs/Events/`, o `EventService` está registrado no DI e as quatro rotas em
+> `EventsController`. São duas tabelas:
+>
+> | tabela.coluna                       | tipo PostgreSQL               | origem no contrato                    |
+> | ----------------------------------- | ----------------------------- | ------------------------------------- |
+> | `Events.Id`                         | `uuid`                        | `id`                                  |
+> | `Events.Date`                       | `date`                        | `date` (`DateOnly` — grão = dia)      |
+> | `Events.Title`                      | `varchar(120)`                | `title`                               |
+> | `Events.Time`                       | `time without time zone` NULL | `time` (`TimeOnly?`)                  |
+> | `Events.Place`                      | `varchar(120)`                | `place`                               |
+> | `Events.Description`                | `varchar(500)`                | `description`                         |
+> | `Events.Color`                      | `varchar(7)`                  | `color` (`#RRGGBB`)                   |
+> | `Events.AuthorName`                 | `varchar(50)` **NULL**        | `authorName` — só gravado se assinar  |
+> | `Events.CreatedAt`                  | `timestamptz`                 | uso interno (não serializado)         |
+> | `EventPresences.EventId` + `UserId` | `uuid` — **PK composta**      | `goingCount` / `isGoing`              |
+> | `EventPresences.CreatedAt`          | `timestamptz`                 | uso interno (não serializado)         |
+>
+> **O que o serviço garante:** com `signed: false` o `authorName` **não é
+> gravado** (não é "gravar e esconder"); `place` vazio vira `"local em segredo"`
+> e `description` nasce com o texto padrão; o nome da assinatura sai do token,
+> nunca do corpo; quem fixa a estrelinha já entra confirmado (`goingCount: 1` e
+> `isGoing: true` na resposta do POST); e **nenhum `UserId` atravessa DTO** —
+> `goingCount` e `isGoing` saem projetados na própria consulta do mês.
+>
+> **Códigos de erro:** `GET` sem `month` (ou com mês malformado) responde **400**
+> `{ "message": ... }` — nunca "sem filtro", que devolveria o calendário
+> inteiro; `DELETE` e `going` em evento inexistente respondem **404**; duplo
+> clique simultâneo no `going` responde **409**, porque a chave composta
+> (`EventId`, `UserId`) barra a segunda gravação antes de virar linha
+> duplicada.
 
 | método   | rota                   | corpo                       | resposta                                  |
 | -------- | ---------------------- | --------------------------- | ----------------------------------------- |
@@ -244,15 +278,31 @@ Todas exigem `[Authorize]`, como o resto dos dados.
    então **qualquer pessoa da cúpula pode desfixar**. Se preferirem restringir
    a Admin (ou a quem assinou), é uma linha no controller — aí o botão
    "desfixar" some para os outros e eu ajusto o front.
-2. **`goingCount` é agregado e `isGoing` é só seu.** O servidor nunca devolve a
-   lista de quem confirmou; ele olha o token de quem chamou e responde só sobre
-   essa pessoa. Foi assim que os votos de post *deveriam* ter sido feitos — lá
-   a API não expõe o voto do usuário, e o front teve que lembrar em
-   `localStorage` (`src/lib/votes.ts`). Aqui dá para nascer certo.
+2. **`goingCount` é agregado e `isGoing` é do usuário que pediu.** O servidor
+   nunca devolve a lista de quem confirmou.
+
+   **Modelagem (backend):** existe a tabela associativa `EventPresences`
+   (`EventId` + `UserId` como **chave primária composta**, mesmo padrão de
+   `PostVotes`). Ela resolve duas coisas de uma vez: o banco **impede
+   confirmação duplicada** (spam de "eu vou") e o servidor consegue responder
+   `isGoing` de quem pediu **depois de um reload** — sem a linha, não haveria
+   como saber se aquela pessoa já havia confirmado.
+
+   **A privacidade é a omissão na leitura, não a ausência no banco.** Nenhum
+   `UserId` atravessa um DTO: a resposta traz só `goingCount`
+   (`e.Presences.Count()`) e `isGoing` (`e.Presences.Any(p => p.UserId == eu)`),
+   os dois projetados na mesma query do mês. Quem fixa a estrelinha já entra
+   confirmado — a contagem nasce em `1` e o `POST /events` devolve
+   `isGoing: true`.
+
+   É o mesmo arranjo dos votos de post (`PostVotes`) — e é justamente o que o
+   front teve de contornar em `localStorage` (`src/lib/votes.ts`), porque lá a
+   API não diz se você votou. Aqui diz.
 3. **`time` é `"HH:mm"` ou `null`, nunca texto livre.** A tela usa um `select`
    de meia em meia hora, então o que chega na API é sempre `"22:30"` — pode
    virar `TimeOnly`/`TimeSpan` no modelo sem nenhum parse defensivo. `null`
-   significa "a confirmar"; esse texto é da tela, não do dado.
+   significa "a confirmar"; esse texto é da tela, não do dado. (Feito: a coluna
+   `Time` já é `TimeOnly?`, `time without time zone` no PostgreSQL.)
 
    A exibição em português ("22h30", "22h") acontece só no front
    (`formatarHora`, em `src/lib/calendar.ts`) — o formato guardado não muda.
@@ -291,7 +341,7 @@ src/services/
   backend/dto.ts         DTO real da API + conversão para o domínio anônimo
   backend/posts.ts       posts contra a API, com paginação feita no cliente
   comments.service.ts    comentários, já contra a API
-  events.service.ts      eventos do calendário — preso em mocks, a API não tem as rotas
+  events.service.ts      eventos do calendário — contra a API (`/events`)
   gallery.service.ts     idem
   mock/                  dados e servidor falso
 src/lib/
@@ -315,9 +365,9 @@ byte a byte, com o `Content-Type` original (boundary incluído). Decodificar o
 formulário ali e reenviar como JSON apaga os campos — a API recebe o request sem
 `Text` e responde 400 ("O texto é obrigatório.").
 
-Comentários, fotos e links passam `source: 'mock'`, o que força a camada falsa
-mesmo com a API ligada — sem isso essas telas levariam 404. Quando as rotas
-existirem, é só tirar o `source`.
+Fotos e links passam `source: 'mock'`, o que força a camada falsa mesmo com a
+API ligada — sem isso essas telas levariam 404. Quando as rotas existirem, é só
+tirar o `source`.
 
 ### Endpoints que o front usa
 
@@ -331,7 +381,11 @@ existirem, é só tirar o `source`.
 | `GET`  | `/posts`              | `GET /api/posts` → traduzido e paginado no cliente          |
 | `GET`  | `/posts/:id`          | `GET /api/posts/{id}` → traduzido                           |
 | `POST` | `/posts`              | `POST /api/posts` em `multipart/form-data` (`Text`, `Title`, `Images`) |
-| —      | comentários, fotos, links | mocks                                                   |
+| `GET`  | `/events?month=`      | `GET /api/events?month=YYYY-MM` → `{ items, nextCursor: null }` |
+| `POST` | `/events`             | `POST /api/events` com `{ date, title, time, place, color, signed }` |
+| `POST` | `/events/:id/going`   | `POST /api/events/{id}/going` → `{ eventId, goingCount, isGoing }` |
+| `DELETE` | `/events/:id`       | `DELETE /api/events/{id}` → 204                               |
+| —      | fotos e links         | mocks                                                   |
 
 O formato exato de cada tipo está em `src/types/index.ts` — os schemas Zod
 **são** a especificação.

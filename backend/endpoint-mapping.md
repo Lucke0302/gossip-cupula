@@ -21,6 +21,7 @@ Documentação das rotas atuais da API (backend .NET 10). Base de URL local:
 | 401 | Não autenticado — token JWT ausente, inválido ou expirado |
 | 403 | Autenticado, porém sem permissão (não é Owner e não é Admin) |
 | 404 | Recurso não encontrado |
+| 409 | Conflito — duas gravações simultâneas da mesma presença em um evento |
 
 DTOs são recebidos via `application/json` (`[FromBody]`) — exceto o
 `POST /api/posts`, que recebe `multipart/form-data` (`[FromForm]`, texto +
@@ -370,7 +371,77 @@ serve apenas para autorizar a requisição.
 
 ---
 
-## 6. Hub SignalR — `GossipHub`
+## 6. Eventos — `EventsController` (base `/api/events`)
+
+Exige autenticação (`[Authorize]`), como o resto dos dados.
+
+> **Autoria:** evento é a única exceção de autoria do site. `authorName` só vem
+> preenchido quando a pessoa marcou "assinar" no POST — e é o único caso em que
+> o nome é gravado. O nome sai do **token**, nunca do corpo: o front manda só a
+> intenção (`signed`).
+>
+> **Presença:** a tabela `EventPresences` guarda quem confirmou (`EventId` +
+> `UserId` como chave primária composta, o que impede confirmação duplicada),
+> mas **nenhum `UserId` sai numa resposta**: o que trafega é o agregado
+> (`goingCount`) e o estado de quem pediu (`isGoing`), projetados na própria
+> consulta. Privacidade é a omissão na leitura, não a ausência no banco.
+
+### `GET /api/events?month=YYYY-MM`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Parâmetros | `month` — query, obrigatório, `YYYY-MM` |
+| Resposta 200 | `Page<EventResponseDto>` — `{ items, nextCursor }`, em ordem de data. `nextCursor` é sempre `null` (um mês cabe numa resposta) |
+| Resposta 400 | `month` ausente ou fora do formato — `{ "message": "..." }` |
+| Resposta 401 | Token ausente/inválido |
+
+### `POST /api/events`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Body (entrada) | `CreateEventRequestDto` — `date` (`YYYY-MM-DD`, obrigatório), `title` (3–120, obrigatório), `time` (`"HH:mm"` ou `null`), `place` (opcional, máx. 120), `color` (uma das 5 cores do design), `signed` (bool) |
+| Resposta 201 | `EventResponseDto` (sem header `Location`: não existe rota de evento isolado) |
+| Resposta 400 | Validação do body falhou (título curto, data inválida, cor fora da paleta, horário fora do formato) |
+| Resposta 401 | Token ausente/inválido |
+
+**Regras de negócio:**
+- `signed: false` (o padrão) → `authorName` **não é gravado**, fica `NULL`.
+- `time` vazio → `NULL` ("a confirmar" é texto de tela, não valor guardado).
+- `place` vazio → `"local em segredo"`; `description` nasce com
+  `"marcado anonimamente. quem sabe, sabe."` (ou a variante de assinado).
+- Quem fixa a estrelinha **já entra confirmado**: a resposta volta com
+  `goingCount: 1` e `isGoing: true`.
+
+### `DELETE /api/events/{id:guid}`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Parâmetros | `id` — `Guid` (rota) |
+| Resposta 204 | Evento excluído (as presenças saem em cascata) |
+| Resposta 401 | Token ausente/inválido |
+| Resposta 404 | Evento inexistente |
+
+> Sem dono para conferir: `authorName` é assinatura, não propriedade, então
+> **qualquer pessoa da cúpula pode desfixar**.
+
+### `POST /api/events/{id:guid}/going`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim (UserId = usuário do token) |
+| Parâmetros | `id` — `Guid` (rota) |
+| Resposta 200 | `GoingResultDto` — `{ eventId, goingCount, isGoing }` |
+| Resposta 401 | Token ausente/inválido |
+| Resposta 404 | Evento inexistente |
+| Resposta 409 | Dois cliques simultâneos tentaram gravar a mesma presença |
+
+**Regra:** confirmação inexistente → cria; existente → remove (toggle). A chave
+composta barra a duplicata no banco, e o conflito vira **409** em vez de 500.
+
+## 7. Hub SignalR — `GossipHub`
 
 | Item | Detalhe |
 |------|---------|
@@ -397,7 +468,7 @@ connection.start();
 
 ---
 
-## 7. Estrutura dos DTOs de resposta
+## 8. Estrutura dos DTOs de resposta
 
 ### `PostResponseDto`
 
@@ -441,6 +512,47 @@ connection.start();
 { "email": "string", "password": "string" }
 ```
 
+### `EventResponseDto`
+
+```jsonc
+{
+  "id": "uuid",
+  "date": "2026-10-24",        // YYYY-MM-DD, sem hora: o grão é o dia
+  "title": "baile de máscaras",
+  "time": "23:00",             // "HH:mm" 24h, ou null = a confirmar
+  "place": "salão da cúpula",
+  "description": "marcado anonimamente. quem sabe, sabe.",
+  "color": "#E86B9E",          // uma das 5 cores do design
+  "authorName": null,          // null quando não assinou (o padrão)
+  "goingCount": 31,            // agregado: nunca diz quem confirmou
+  "isGoing": false             // se QUEM PEDIU confirmou
+}
+```
+
+> `date` e `time` são **string** de propósito: um `TimeOnly` serializaria
+> `"23:00:00"` e o regex do front (`horaSchema`) recusaria.
+
+### `GoingResultDto`
+
+```jsonc
+// resposta de POST /api/events/{id}/going
+{ "eventId": "uuid", "goingCount": 12, "isGoing": true }
+```
+
+> Sem `userId`: o serviço lê o usuário do token para decidir o toggle, mas o
+> identificador não atravessa o DTO.
+
+### `CreateEventRequestDto`
+
+```jsonc
+// POST /api/events
+{ "date": "2026-10-24", "title": "baile de máscaras", "time": "23:00",
+  "place": "salão da cúpula", "color": "#E86B9E", "signed": false }
+```
+
+> `time` e `place` são opcionais; `signed` é só a **intenção** de assinar — o
+> nome vem do token.
+
 ---
 
 ## Observações
@@ -464,17 +576,18 @@ connection.start();
 - As rotas usam a restrição `{id:guid}` — valores fora do formato `Guid` não
   casam e resultam em resposta de rota não encontrada (ASP.NET Core).
 - **Blindagem de dados:** todos os controllers de dados (`PostController`,
-  `AdminController`) e o hub `GossipHub` exigem **`[Authorize]`** (JWT).
-  Somente as rotas públicas do `AuthController` (`register`, `login`,
-  `confirm-email`, `refresh`) podem ser acessadas sem token. O controller de
-  exemplo `WeatherForecastController` foi removido.
+  `CommentController`, `EventsController`, `AdminController`) e o hub
+  `GossipHub` exigem **`[Authorize]`** (JWT). Somente as rotas públicas do
+  `AuthController` (`register`, `login`, `confirm-email`, `refresh`) podem ser
+  acessadas sem token. O controller de exemplo `WeatherForecastController` foi
+  removido.
 - **Login só é liberado** após e-mail confirmado (`confirm-email`) e aprovação
   do Admin (`/api/admin/users/{id}/approve`).
 - **Refresh token** é rotacionado a cada `login` e a cada `refresh`, com
   validade de 7 dias (`RefreshTokenExpiryTime`).
 - **Admin** também pode **revogar** uma aprovação (`/revoke`, derruba a sessão)
   e **deletar** um usuário (`DELETE /api/admin/users/{id}`).
-- **Migration pendente:** a coluna `Posts.ImageUrls` (`text[] NOT NULL DEFAULT
-  '{}'`) exige rodar `dotnet ef database update`. A migração é aditiva e
-  segura em tabela populada (o default preenche os posts existentes).
+- **Migration pendente:** nenhuma. As migrations `AddPostImages` e `AddEvents`
+  estão aplicadas no banco (a última cria `Events` e `EventPresences`, sem tocar
+  em nenhuma tabela existente).
 

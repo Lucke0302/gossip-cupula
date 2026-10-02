@@ -13,6 +13,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<Comment> Comments => Set<Comment>();
 
+    public DbSet<Event> Events => Set<Event>();
+
+    public DbSet<EventPresence> EventPresences => Set<EventPresence>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -144,6 +148,87 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Sustenta a listagem paginada: WHERE PostId = @id
             // ORDER BY CreatedAt DESC, Id DESC.
             entity.HasIndex(c => new { c.PostId, c.CreatedAt, c.Id });
+        });
+
+        modelBuilder.Entity<Event>(entity =>
+        {
+            entity.ToTable("Events");
+            entity.HasKey(e => e.Id);
+
+            // Grão = dia. O Npgsql mapeia DateOnly nativamente para "date"
+            // (coluna sem hora), e TimeOnly? para "time without time zone".
+            // São os tipos que o contrato pede: `date` YYYY-MM-DD e `time`
+            // "HH:mm" ou NULL ("a confirmar").
+            entity.Property(e => e.Date)
+                  .HasColumnType("date");
+
+            entity.Property(e => e.Time)
+                  .HasColumnType("time without time zone");
+
+            entity.Property(e => e.Title)
+                  .IsRequired()
+                  .HasMaxLength(120);
+
+            entity.Property(e => e.Place)
+                  .IsRequired()
+                  .HasMaxLength(120);
+
+            entity.Property(e => e.Description)
+                  .IsRequired()
+                  .HasMaxLength(500);
+
+            // Hexadecimal "#RRGGBB": uma das cinco cores do design
+            // (EVENT_COLORS no front). A lista fechada é validada no DTO de
+            // entrada; aqui só o tamanho, para a coluna não virar varchar(1).
+            entity.Property(e => e.Color)
+                  .IsRequired()
+                  .HasMaxLength(7);
+
+            // Assinatura OPCIONAL: NULL é o padrão, e é o que fica gravado
+            // quando a pessoa não marca "assinar". Não é "gravar e esconder" —
+            // o nome simplesmente não existe na linha.
+            entity.Property(e => e.AuthorName)
+                  .HasMaxLength(50);
+
+            entity.Property(e => e.CreatedAt)
+                  .HasColumnType(timestampWithTimeZone);
+
+            // `goingCount` e `isGoing` NÃO são colunas: saem das presenças
+            // (`e.Presences.Count()` e `e.Presences.Any(p => p.UserId == eu)`).
+            // A relação é configurada em EventPresence.
+
+            // Sustenta a listagem por mês: WHERE Date >= @start AND Date < @end
+            // ORDER BY Date.
+            entity.HasIndex(e => e.Date);
+        });
+
+        modelBuilder.Entity<EventPresence>(entity =>
+        {
+            entity.ToTable("EventPresences");
+
+            // Chave composta: um usuário confirma presença UMA vez por evento
+            // (mesmo padrão de PostVotes). É a garantia de integridade no banco
+            // contra confirmações repetidas — a checagem na aplicação sozinha
+            // perderia a corrida entre dois requests simultâneos.
+            entity.HasKey(p => new { p.EventId, p.UserId });
+
+            entity.Property(p => p.CreatedAt)
+                  .HasColumnType(timestampWithTimeZone);
+
+            // FK: EventPresence -> Event (excluir o evento apaga as presenças).
+            entity.HasOne(p => p.Event)
+                  .WithMany(e => e.Presences)
+                  .HasForeignKey(p => p.EventId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // FK: EventPresence -> User, sem navegação inversa em User de
+            // propósito: nenhuma leitura precisa carregar "em quais eventos eu
+            // confirmei". A FK em cascata mantém o DELETE de usuário do Admin
+            // funcionando — as presenças dele saem junto, e o evento permanece.
+            entity.HasOne(p => p.User)
+                  .WithMany()
+                  .HasForeignKey(p => p.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

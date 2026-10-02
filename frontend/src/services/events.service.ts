@@ -13,14 +13,14 @@ import {
 /* ------------------------------------------------------------------ *
  * Eventos do calendário.
  *
- * A API ainda NÃO tem essas rotas — não existe nada de evento no
- * swagger. Por isso o `source: 'mock'` é fixo aqui: mesmo com a API
- * ligada, estas chamadas vão para a camada falsa, senão a tela levaria
- * 404. É o mesmo arranjo que comentários tiveram até as rotas existirem.
+ * Estes são chamadas de verdade para a API (`/api/events`), como posts e
+ * comentários. O contrato está detalhado no README do front.
  *
- * O contrato abaixo é o que o backend precisa implementar; está
- * detalhado no README. Quando as rotas existirem, basta remover o
- * `source` — nenhuma tela muda.
+ * A resposta passa por `eventSchema` e `goingResultSchema`, ambos
+ * `.strict()`: um campo a mais — um `userId`, a lista de quem confirmou —
+ * derruba a validação aqui. E é pra derrubar mesmo: o servidor guarda quem
+ * confirmou (a chave composta impede confirmação duplicada), mas não conta
+ * isso a ninguém; o que chega é só o agregado e o estado de quem pediu.
  * ------------------------------------------------------------------ */
 
 const eventPageSchema = pageSchema(eventSchema);
@@ -37,7 +37,6 @@ export function listEvents(month: string, signal?: AbortSignal): Promise<Page<Ca
   return request('/events', {
     query: { month },
     schema: eventPageSchema,
-    source: 'mock',
     signal,
   });
 }
@@ -47,7 +46,6 @@ export function createEvent(input: CreateEventInput): Promise<CalendarEvent> {
     method: 'POST',
     body: input,
     schema: eventSchema,
-    source: 'mock',
   });
 }
 
@@ -56,7 +54,6 @@ export function deleteEvent(id: string): Promise<undefined> {
   return request(`/events/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     schema: voidSchema,
-    source: 'mock',
   });
 }
 
@@ -65,6 +62,5 @@ export function toggleGoing(id: string): Promise<GoingResult> {
   return request(`/events/${encodeURIComponent(id)}/going`, {
     method: 'POST',
     schema: goingResultSchema,
-    source: 'mock',
   });
 }

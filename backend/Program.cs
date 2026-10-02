@@ -38,7 +38,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "GossipCupula.Api",
         Version = "v1",
-        Description = "API backend do blog/rede social estilo Gossip Girl (Auth, Posts, Comentários, Votos e SignalR)."
+        Description = "API backend do blog/rede social estilo Gossip Girl (Auth, Posts, Comentários, Votos, Eventos e SignalR)."
     });
 
     // Habilita o botão "Authorize" no Swagger UI para inserir o token JWT,
@@ -75,6 +75,13 @@ builder.Services.AddScoped<IVoteService, VoteService>();
 
 // Registra o serviço de comentários (Scoped: uma instância por request).
 builder.Services.AddScoped<ICommentService, CommentService>();
+
+// Registra o serviço de eventos do calendário (Scoped: uma instância por request).
+builder.Services.AddScoped<IEventService, EventService>();
+
+// Necessário para o EventService ler o usuário autenticado (claims do JWT) —
+// é de lá que sai o `isGoing` e o `authorName` do evento assinado.
+builder.Services.AddHttpContextAccessor();
 
 // Registra o serviço de storage (OCI Object Storage). Singleton de propósito:
 // o ObjectStorageClient é caro de criar, é thread-safe e resolve as

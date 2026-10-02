@@ -80,3 +80,40 @@ Content-Type: application/json
 }
 
 ###
+
+@eventId = 00000000-0000-0000-0000-000000000000
+
+# Eventos do mês (month é obrigatório, no formato YYYY-MM).
+GET {{GossipCupula.Api_HostAddress}}/api/events?month=2026-10
+Authorization: Bearer {{token}}
+
+###
+
+# Fixa um evento. time e place são opcionais; signed é só a intenção de assinar
+# (o authorName sai do token). Quem fixa entra confirmado.
+POST {{GossipCupula.Api_HostAddress}}/api/events
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "date": "2026-10-24",
+  "title": "baile de máscaras",
+  "time": "23:00",
+  "place": "salão da cúpula",
+  "color": "#E86B9E",
+  "signed": false
+}
+
+###
+
+# Alterna a própria presença: { eventId, goingCount, isGoing }
+POST {{GossipCupula.Api_HostAddress}}/api/events/{{eventId}}/going
+Authorization: Bearer {{token}}
+
+###
+
+# Desfixar apaga o evento (e as presenças, em cascata).
+DELETE {{GossipCupula.Api_HostAddress}}/api/events/{{eventId}}
+Authorization: Bearer {{token}}
+
+###
