@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CalendarGrid } from '../components/CalendarGrid';
 import { Card } from '../components/Card';
-import { DevNotice } from '../components/DevNotice';
 import { ErrorState } from '../components/ErrorState';
 import { EventDetailCard } from '../components/EventDetailCard';
 import { Layout } from '../components/Layout';
@@ -98,8 +97,6 @@ export default function EventsPage() {
       sidebarExtraAfter="eventos"
     >
       <div className="flex flex-col gap-4.5">
-        <DevNotice oQueFalta="as estrelinhas que você fixar somem quando recarregar a página." />
-
         {eventos.isError ? (
           <ErrorState error={eventos.error} onRetry={() => void eventos.refetch()} />
         ) : null}
