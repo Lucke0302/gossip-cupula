@@ -83,6 +83,10 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 // Registra o serviço de eventos do calendário (Scoped: uma instância por request).
 builder.Services.AddScoped<IEventService, EventService>();
 
+// Registra o repositório de rastreio de gossipficação (tabela GossipifiedPosts).
+// Guarda a dupla gossipficação e cria o token de rastreio devolvido pela IA.
+builder.Services.AddScoped<IGossipifiedPostService, GossipifiedPostService>();
+
 // Necessário para o EventService ler o usuário autenticado (claims do JWT) —
 // é de lá que sai o `isGoing` e o `authorName` do evento assinado.
 builder.Services.AddHttpContextAccessor();

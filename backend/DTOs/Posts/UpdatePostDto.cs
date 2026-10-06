@@ -11,9 +11,10 @@ public class UpdatePostDto
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
-    /// Flag de gossipficação (IA). É anulável de propósito: quando ausente
-    /// (<c>null</c>) a flag existente é preservada, e não resetada — assim uma
-    /// edição de conteúdo não "des-gossipifica" um post por acidente.
+    /// FK opcional para o registro de gossipficação (IA). É anulável de
+    /// propósito: quando ausente (<c>null</c>) a referência existente é
+    /// preservada, e não apagada — assim uma edição de conteúdo não
+    /// "des-gossipifica" um post por acidente.
     /// </summary>
-    public bool? IsGossipfyed { get; set; }
+    public Guid? GossipifiedPostId { get; set; }
 }

@@ -16,8 +16,10 @@ public class CreatePostDto
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
-    /// Indica se o conteúdo enviado já passou pelo pipeline de gossipficação (IA).
-    /// Padrão <c>false</c> para posts comuns.
+    /// Id opcional do registro de gossipficação (<c>GossipifiedPost</c>) que
+    /// originou o conteúdo. Quando o texto veio do endpoint de IA, o frontend
+    /// repassa aqui o <c>gossipifiedPostId</c> devolvido na transformação;
+    /// para posts comuns fica <c>null</c>.
     /// </summary>
-    public bool IsGossipfyed { get; set; } = false;
+    public Guid? GossipifiedPostId { get; set; }
 }

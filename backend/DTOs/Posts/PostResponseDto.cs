@@ -36,9 +36,10 @@ public class PostResponseDto
     public List<string> ImageUrls { get; set; } = new();
 
     /// <summary>
-    /// Indica se o post já passou pelo pipeline de gossipficação (IA).
+    /// FK opcional para o registro de gossipficação (IA) que originou o
+    /// conteúdo. <c>null</c> quando o post nunca passou pelo pipeline.
     /// </summary>
-    public bool IsGossipfyed { get; set; }
+    public Guid? GossipifiedPostId { get; set; }
 
     /// <summary>
     /// Quantidade de comentários do post.

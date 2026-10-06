@@ -36,11 +36,20 @@ public class Post
     public List<string> ImageUrls { get; set; } = new();
 
     /// <summary>
-    /// Indica se o conteúdo do post já passou pelo pipeline de gossipficação
-    /// (IA da Anthropic). Uma vez verdadeiro, o post não pode ser transformado
-    /// novamente (ver <c>POST /api/ai/gossipfy</c>).
+    /// FK opcional para o registro de rastreio de gossipficação (IA da Anthropic)
+    /// que originou o conteúdo deste post.
+    /// <para>
+    /// Substitui a antiga flag booleana <c>IsGossipfyed</c>. O valor é um
+    /// <c>GossipifiedPostId</c> devolvido por <c>POST /api/ai/gossipfy</c> e
+    /// reenviado pelo frontend na criação/edição do post. Como é <c>NULL</c>
+    /// por padrão, posts comuns (nunca passaram pela IA) não guardam relação —
+    /// e o endpoint de IA usa esta FK para impedir a dupla gossipficação.
+    /// </para>
     /// </summary>
-    public bool IsGossipfyed { get; set; } = false;
+    public Guid? GossipifiedPostId { get; set; }
+
+    /// <summary>Navegação para o registro de gossipficação referenciado pela FK.</summary>
+    public GossipifiedPost? GossipifiedPost { get; set; }
 
     public ICollection<PostVote> Votes { get; set; } = new List<PostVote>();
 

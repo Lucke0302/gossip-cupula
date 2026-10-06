@@ -17,24 +17,34 @@ public class AITransformationController : ControllerBase
 {
     private readonly IAITextTransformationService _aiTextTransformationService;
     private readonly IPostService _postService;
+    private readonly IGossipifiedPostService _gossipifiedPostService;
     private readonly ILogger<AITransformationController> _logger;
 
     public AITransformationController(
         IAITextTransformationService aiTextTransformationService,
         IPostService postService,
+        IGossipifiedPostService gossipifiedPostService,
         ILogger<AITransformationController> logger)
     {
         _aiTextTransformationService = aiTextTransformationService;
         _postService = postService;
+        _gossipifiedPostService = gossipifiedPostService;
         _logger = logger;
     }
 
     /// <summary>
     /// Transforma um texto comum em uma fofoca no estilo "Gossip Girl".
     /// <para>
-    /// Quando <c>postId</c> é informado, valida no banco se o post já passou
-    /// pelo pipeline de IA (<c>IsGossipfyed</c>): se sim, recusa a operação
-    /// (400) para impedir a dupla gossipficação.
+    /// Prevenção de dupla gossipficação (antes de chamar a IA):
+    /// <list type="bullet">
+    ///   <item><c>postId</c> informado: o post já tem <c>GossipifiedPostId</c>?
+    ///   Se sim, 400. Se o post não existe, 404.</item>
+    ///   <item><c>gossipifiedPostId</c> informado: já existe esse registro na
+    ///   tabela <c>GossipifiedPosts</c>? Se sim, 400 (texto temporário já
+    ///   transformado).</item>
+    /// </list>
+    /// Passando pela validação, roda o pipeline (Etapa A + Etapa B), grava um
+    /// novo <c>GossipifiedPost</c> e devolve o novo <c>GossipifiedPostId</c>.
     /// </para>
     /// </summary>
     [HttpPost("gossipfy")]
@@ -52,19 +62,34 @@ public class AITransformationController : ControllerBase
             return BadRequest(new { message = "O campo 'content' é obrigatório e não pode ser vazio." });
         }
 
-        // Prevenção de dupla gossipficação: só valida quando um postId real foi enviado.
+        // Guarda 1 — post definitivo: só valida quando um postId real foi enviado.
         if (request.PostId is { } postId && postId != Guid.Empty)
         {
-            var isGossipfyed = await _postService.GetIsGossipfyedAsync(postId);
+            Guid? existingGossipifiedPostId;
 
-            if (isGossipfyed is null)
+            try
+            {
+                existingGossipifiedPostId = await _postService.GetGossipifiedPostIdAsync(postId);
+            }
+            catch (KeyNotFoundException)
             {
                 return NotFound(new { message = "Post não encontrado." });
             }
 
-            if (isGossipfyed.Value)
+            if (existingGossipifiedPostId is not null)
             {
                 return BadRequest(new { message = "Este post já foi gossipificado e não pode ser transformado novamente." });
+            }
+        }
+
+        // Guarda 2 — texto temporário: só valida quando um gossipifiedPostId real foi enviado.
+        if (request.GossipifiedPostId is { } gossipifiedPostId && gossipifiedPostId != Guid.Empty)
+        {
+            var alreadyGossipified = await _gossipifiedPostService.ExistsAsync(gossipifiedPostId, cancellationToken);
+
+            if (alreadyGossipified)
+            {
+                return BadRequest(new { message = "Este texto temporário já foi gossipificado e não pode ser transformado novamente." });
             }
         }
 
@@ -72,11 +97,17 @@ public class AITransformationController : ControllerBase
         {
             var result = await _aiTextTransformationService.TransformAsync(request.Content, cancellationToken);
 
+            // Persiste o rastreio da transformação e devolve o novo Id ao cliente.
+            // É a partir daqui que o frontend (ou o post definitivo) marca o texto
+            // como "já gossipificado".
+            result.GossipifiedPostId = await _gossipifiedPostService.CreateAsync(cancellationToken);
+
             return Ok(new GossipfyResponse
             {
                 OriginalContent = result.OriginalContent,
                 TransformedContent = result.TransformedContent,
-                Warnings = result.Warnings
+                Warnings = result.Warnings,
+                GossipifiedPostId = result.GossipifiedPostId
             });
         }
         catch (AITransformationException ex)

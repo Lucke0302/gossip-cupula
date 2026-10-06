@@ -37,7 +37,7 @@ public class PostService(
         EditedBy = post.EditedBy,
         // Array "text[]" do próprio post: vem na mesma linha, sem join.
         ImageUrls = post.ImageUrls,
-        IsGossipfyed = post.IsGossipfyed,
+        GossipifiedPostId = post.GossipifiedPostId,
         // COUNT correlacionado no MESMO SELECT: uma query para a lista
         // inteira, não uma query por post (N+1).
         CommentCount = post.Comments.Count(),
@@ -67,7 +67,7 @@ public class PostService(
     /// Publica um post sem imagens (contrato JSON: <c>title</c> + <c>content</c>).
     /// </summary>
     public Task<PostResponseDto> CreateAsync(CreatePostDto createPostDto) =>
-        CreateAsync(createPostDto.Title, createPostDto.Content, [], createPostDto.IsGossipfyed);
+        CreateAsync(createPostDto.Title, createPostDto.Content, [], createPostDto.GossipifiedPostId);
 
     /// <summary>
     /// Publica um post vindo de <c>multipart/form-data</c> (texto + imagens).
@@ -85,7 +85,7 @@ public class PostService(
             ? []
             : (await Task.WhenAll(images.Select(image => storageService.UploadImageAsync(image)))).ToList();
 
-        return await CreateAsync(ResolveTitle(formRequest.Title, formRequest.Text), formRequest.Text, imageUrls, formRequest.IsGossipfyed);
+        return await CreateAsync(ResolveTitle(formRequest.Title, formRequest.Text), formRequest.Text, imageUrls, formRequest.GossipifiedPostId);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public class PostService(
     /// evento SignalR). Ponto único de escrita: os dois contratos de entrada
     /// (JSON e multipart) convergem para cá.
     /// </summary>
-    private async Task<PostResponseDto> CreateAsync(string title, string content, List<string> imageUrls, bool isGossipfyed)
+    private async Task<PostResponseDto> CreateAsync(string title, string content, List<string> imageUrls, Guid? gossipifiedPostId)
     {
         var post = new Post
         {
@@ -101,7 +101,7 @@ public class PostService(
             Title = title.Trim(),
             Content = content.Trim(),
             ImageUrls = imageUrls,
-            IsGossipfyed = isGossipfyed,
+            GossipifiedPostId = gossipifiedPostId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -137,11 +137,12 @@ public class PostService(
 
         post.Content = updatePostDto.Content.Trim();
 
-        // Só altera a flag quando o frontend a enviou explicitamente; do
-        // contrário, preserva o estado atual (não "des-gossipifica" à toa).
-        if (updatePostDto.IsGossipfyed.HasValue)
+        // Só altera a referência de gossipficação quando o frontend a enviou
+        // explicitamente; do contrário, preserva o valor atual (não
+        // "des-gossipifica" o post à toa numa edição de texto).
+        if (updatePostDto.GossipifiedPostId.HasValue)
         {
-            post.IsGossipfyed = updatePostDto.IsGossipfyed.Value;
+            post.GossipifiedPostId = updatePostDto.GossipifiedPostId.Value;
         }
 
         post.EditedAt = DateTime.UtcNow;
@@ -152,15 +153,22 @@ public class PostService(
         return await GetByIdAsync(postId);
     }
 
-    public async Task<bool?> GetIsGossipfyedAsync(Guid postId)
+    public async Task<Guid?> GetGossipifiedPostIdAsync(Guid postId)
     {
-        // FirstOrDefaultAsync em um bool? devolve null quando o post não existe
-        // (default(bool?)), o que distingue "inexistente" de "não gossipificado".
-        return await dbContext.Posts
+        // Projeta só a FK. O tipo anônimo devolve null quando o post não existe
+        // (FirstOrDefault), o que distingue "inexistente" de "não gossipificado".
+        var state = await dbContext.Posts
             .AsNoTracking()
             .Where(post => post.Id == postId)
-            .Select(post => (bool?)post.IsGossipfyed)
+            .Select(post => new { post.GossipifiedPostId })
             .FirstOrDefaultAsync();
+
+        if (state is null)
+        {
+            throw new KeyNotFoundException("Post não encontrado.");
+        }
+
+        return state.GossipifiedPostId;
     }
 
     public async Task<bool> DeleteAsync(Guid postId, string currentUserRole)

@@ -11,4 +11,12 @@ public sealed class TextTransformationResult
 
     /// <summary>Avisos não bloqueantes gerados durante o pipeline.</summary>
     public IReadOnlyList<string> Warnings { get; init; } = [];
+
+    /// <summary>
+    /// Id do <c>GossipifiedPost</c> (registro de rastreio) associado a esta
+    /// transformação. Preenchido pelo endpoint após salvar o registro no banco;
+    /// fica <see cref="Guid.Empty"/> enquanto a transformação existe apenas em
+    /// memória, dentro do pipeline de IA.
+    /// </summary>
+    public Guid GossipifiedPostId { get; set; }
 }

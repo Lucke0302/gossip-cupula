@@ -11,4 +11,11 @@ public sealed class GossipfyResponse
 
     /// <summary>Avisos não bloqueantes gerados durante o pipeline (ex.: falha no parse da Etapa A).</summary>
     public IReadOnlyList<string> Warnings { get; init; } = [];
+
+    /// <summary>
+    /// Id do <c>GossipifiedPost</c> recém-criado para esta transformação.
+    /// O frontend deve guardar e reenviar este valor (como <c>postId</c> ao criar
+    /// o post definitivo, ou como <c>gossipifiedPostId</c> em nova chamada de IA).
+    /// </summary>
+    public Guid GossipifiedPostId { get; set; }
 }

@@ -55,10 +55,11 @@ public class CreatePostFormRequest : IValidatableObject
     public List<IFormFile>? Images { get; set; }
 
     /// <summary>
-    /// Indica se o conteúdo enviado já passou pelo pipeline de gossipficação
-    /// (IA). Campo opcional do formulário; padrão <c>false</c>.
+    /// Id opcional do registro de gossipficação (IA) que originou o texto.
+    /// Campo do formulário; é o <c>gossipifiedPostId</c> devolvido pela IA e
+    /// reenviado pelo frontend ao publicar o post definitivo.
     /// </summary>
-    public bool IsGossipfyed { get; set; } = false;
+    public Guid? GossipifiedPostId { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

@@ -17,6 +17,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<EventPresence> EventPresences => Set<EventPresence>();
 
+    public DbSet<GossipifiedPost> GossipifiedPosts => Set<GossipifiedPost>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -95,12 +97,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                   .IsRequired()
                   .HasDefaultValueSql("ARRAY[]::text[]");
 
-            // Flag de gossipficação (IA). NOT NULL + DEFAULT false: a migração é
-            // aditiva e não pode quebrar quando a tabela já tem posts.
-            entity.Property(p => p.IsGossipfyed)
-                  .HasDefaultValue(false);
+            // FK opcional: Post -> GossipifiedPost. Substitui a antiga flag
+            // booleana IsGossipfyed. Coluna NULLABLE (posts comuns não têm
+            // relação) e comportamento SetNull: apagar o registro de rastreio
+            // apenas desliga a referência no post, sem apagar o post.
+            entity.HasOne(p => p.GossipifiedPost)
+                  .WithMany()
+                  .HasForeignKey(p => p.GossipifiedPostId)
+                  .OnDelete(DeleteBehavior.SetNull);
 
             // Posts são 100% anônimos: não existe mais FK para User (Owner).
+        });
+
+        modelBuilder.Entity<GossipifiedPost>(entity =>
+        {
+            entity.ToTable("GossipifiedPosts");
+            entity.HasKey(g => g.Id);
+
+            entity.Property(g => g.CreatedAt)
+                  .HasColumnType(timestampWithTimeZone);
         });
 
         modelBuilder.Entity<PostVote>(entity =>

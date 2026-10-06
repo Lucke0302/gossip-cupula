@@ -450,10 +450,11 @@ Exige autenticação (`[Authorize]`): apenas usuários logados podem usar a IA.
 | Item | Detalhe |
 |------|---------|
 | Autenticação | ✅ Sim |
-| Body (entrada) | `GossipfyRequest` — `content` (obrigatório; não pode ser vazio) e `postId` (opcional, `Guid`) |
-| Resposta 200 | `GossipfyResponse` — `{ originalContent, transformedContent, warnings }` |
+| Body (entrada) | `GossipfyRequest` — `content` (obrigatório; não pode ser vazio), `postId` (opcional, `Guid`) e `gossipifiedPostId` (opcional, `Guid`) |
+| Resposta 200 | `GossipfyResponse` — `{ originalContent, transformedContent, warnings, gossipifiedPostId }` |
 | Resposta 400 | `content` ausente/vazio — `{ "message": "O campo 'content' é obrigatório e não pode ser vazio." }` |
-| Resposta 400 | Post já gossipificado — `{ "message": "Este post já foi gossipificado e não pode ser transformado novamente." }` |
+| Resposta 400 | Post já gossipificado (`postId` já possui `gossipifiedPostId`) — `{ "message": "Este post já foi gossipificado e não pode ser transformado novamente." }` |
+| Resposta 400 | Texto temporário já gossipificado (`gossipifiedPostId` já existe na tabela `GossipifiedPosts`) — `{ "message": "Este texto temporário já foi gossipificado e não pode ser transformado novamente." }` |
 | Resposta 401 | Token ausente/inválido |
 | Resposta 404 | `postId` informado e o post não existe |
 | Resposta 502 | Falha não mapeável na API da Anthropic (erros 401/403/404/429/5xx são repassados como `ProblemDetails`) |
@@ -462,14 +463,16 @@ Exige autenticação (`[Authorize]`): apenas usuários logados podem usar a IA.
 // request
 {
   "content": "A Serena terminou o namoro...",
-  "postId": "00000000-0000-0000-0000-000000000000" // opcional
+  "postId": "00000000-0000-0000-0000-000000000000",           // opcional
+  "gossipifiedPostId": "00000000-0000-0000-0000-000000000000" // opcional
 }
 
 // 200
 {
   "originalContent": "...",
   "transformedContent": "Ei, Upper East Siders... XOXO — Gossip Girl.",
-  "warnings": []
+  "warnings": [],
+  "gossipifiedPostId": "9f1c2e3a-1b2c-4d5e-8f90-a1b2c3d4e5f6" // token de rastreio — guarde e reenvie
 }
 ```
 
@@ -481,10 +484,17 @@ Exige autenticação (`[Authorize]`): apenas usuários logados podem usar a IA.
 2. **Etapa B (redação):** texto original + JSON da Etapa A geram a fofoca final
    em PT-BR ("XOXO — Gossip Girl.").
 
-> **Prevenção de dupla gossipficação:** quando `postId` é informado, o backend
-> consulta `Posts.IsGossipfyed`. Se o post já foi transformado, responde **400**
-> sem chamar a IA. A flag é persistida pelos endpoints de criação/atualização de
-> post (`isGossipfyed`), enviada pelo frontend.
+> **Prevenção de dupla gossipficação (tabela `GossipifiedPosts`):** a validação
+> acontece **antes** de chamar a IA. Se `postId` for informado e o post já tiver
+> `Posts.GossipifiedPostId` preenchido → **400**. Se `gossipifiedPostId` for
+> informado e já existir na tabela `GossipifiedPosts` → **400**. Passando pela
+> validação, o pipeline roda e um **novo** `GossipifiedPost` é gravado; o novo
+> `gossipifiedPostId` volta na resposta.
+>
+> O frontend guarda esse Id e o reenvia: como FK `Posts.GossipifiedPostId` ao
+> publicar o post definitivo (aceita nos DTOs de criação/edição de post) ou como
+> `gossipifiedPostId` numa próxima transformação do mesmo texto ainda em edição.
+> Isso substitui a antiga flag booleana `Posts.IsGossipfyed`.
 
 > **Configuração:** chave em `Anthropic:ApiKey` (appsettings/secrets) ou na
 > variável de ambiente `ANTHROPIC_API_KEY`. Modelos: `AnalysisModel`
