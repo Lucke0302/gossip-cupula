@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
+import { GossipfyOverlay } from '../components/GossipfyOverlay';
 import { Layout } from '../components/Layout';
 import { Button, FieldError, Label, TextArea, TextInput } from '../components/ui';
 import { useToast } from '../contexts/ToastContext';
@@ -113,6 +114,8 @@ export default function NewPostPage() {
   const [images, setImages] = useState<PreparedImage[]>([]);
   const [dragging, setDragging] = useState(false);
   const [gossipficando, setGossipficando] = useState(false);
+  const [revelando, setRevelando] = useState(false);
+  const [textoOriginal, setTextoOriginal] = useState<string | null>(null);
 
   const {
     register,
@@ -192,6 +195,54 @@ export default function NewPostPage() {
   };
 
   /**
+   * Escreve o texto novo letra por letra, como uma coluna sendo redigida.
+   *
+   * Dura ~1s independente do tamanho: o passo é calculado a partir do
+   * comprimento, então um texto longo não vira uma espera dentro da
+   * espera. Quem pediu menos movimento recebe o texto de uma vez.
+   */
+  const revelar = (texto: string) =>
+    new Promise<void>((resolve) => {
+      const semAnimacao = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (semAnimacao) {
+        setValue('content', texto, { shouldDirty: true, shouldValidate: true });
+        resolve();
+        return;
+      }
+
+      const QUADROS = 60;
+      const passo = Math.max(1, Math.ceil(texto.length / QUADROS));
+      let posicao = 0;
+      setRevelando(true);
+
+      const timer = window.setInterval(() => {
+        posicao = Math.min(posicao + passo, texto.length);
+        // Sem validar a cada quadro: o texto parcial é inválido por
+        // definição e piscaria mensagem de erro durante a digitação.
+        setValue('content', texto.slice(0, posicao), { shouldDirty: true });
+
+        if (posicao >= texto.length) {
+          window.clearInterval(timer);
+          setValue('content', texto, { shouldDirty: true, shouldValidate: true });
+          setRevelando(false);
+          resolve();
+        }
+      }, 16);
+    });
+
+  /** Devolve o texto que a pessoa tinha escrito antes da IA. */
+  const desfazerGossipficacao = () => {
+    if (textoOriginal === null || revelando) return;
+    setValue('content', textoOriginal, { shouldDirty: true, shouldValidate: true });
+    // Some a FK também: o post volta a ser comum, e um novo clique em
+    // gossipficar cria outra transformação em vez de levar 400.
+    setValue('gossipifiedPostId', null, { shouldDirty: true });
+    setTextoOriginal(null);
+    push('voltou pro seu texto. a Gossip Girl que espere.', 'info');
+  };
+
+  /**
    * Manda o texto pra IA e troca o que está escrito pelo resultado.
    *
    * Vale só uma vez por texto: o servidor registra cada transformação e
@@ -201,17 +252,22 @@ export default function NewPostPage() {
    */
   const gossipficar = async () => {
     const texto = content.trim();
-    if (texto.length < POST_CONTENT_MIN || gossipficando) return;
+    if (texto.length < POST_CONTENT_MIN || gossipficando || revelando) return;
 
     setGossipficando(true);
     try {
       const resultado = await gossipfy(texto, gossipificado);
 
-      setValue('content', resultado.transformedContent, {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
+      // Guarda o que a pessoa escreveu antes de sobrescrever: sem isso,
+      // quem não gostar do resultado perde o próprio texto.
+      setTextoOriginal(resultado.originalContent);
       setValue('gossipifiedPostId', resultado.gossipifiedPostId, { shouldDirty: true });
+
+      // O véu sai ANTES da revelação, senão a máquina de escrever
+      // acontece atrás dele e ninguém vê o texto sendo escrito — que é
+      // justamente o pagamento dos 10 segundos de espera.
+      setGossipficando(false);
+      await revelar(resultado.transformedContent);
 
       // Avisos não bloqueiam: a redação acontece mesmo se a etapa de
       // análise falhar. Mas a pessoa merece saber que saiu capenga.
@@ -264,14 +320,21 @@ export default function NewPostPage() {
 
             <div>
               <Label htmlFor="content">o babado</Label>
-              <TextArea
-                id="content"
-                rows={6}
-                placeholder="começou na mesa do fundo, quando…"
-                invalid={Boolean(errors.content)}
-                aria-describedby="content-hint content-error"
-                {...register('content')}
-              />
+              {/* `relative` existe pro véu da IA se encaixar em cima do campo. */}
+              <div className="relative">
+                <TextArea
+                  id="content"
+                  rows={6}
+                  placeholder="começou na mesa do fundo, quando…"
+                  invalid={Boolean(errors.content)}
+                  aria-describedby="content-hint content-error"
+                  // Durante a revelação o campo é da máquina de escrever:
+                  // digitar junto embaralharia o texto que está chegando.
+                  readOnly={revelando}
+                  {...register('content')}
+                />
+                <GossipfyOverlay ativo={gossipficando} />
+              </div>
               <div className="mt-[5px] flex justify-between gap-3 font-body text-[10.5px] text-muted">
                 <span id="content-hint">hora, lugar e um detalhe que só quem estava lá sabe</span>
                 {/*
@@ -298,6 +361,7 @@ export default function NewPostPage() {
                   variant="secondary"
                   disabled={
                     gossipficando ||
+                    revelando ||
                     Boolean(gossipificado) ||
                     content.trim().length < POST_CONTENT_MIN
                   }
@@ -308,6 +372,18 @@ export default function NewPostPage() {
                   {gossipficando ? 'gossipficando…' : 'gossipficar'}
                 </Button>
 
+                {/* Só existe depois que há o que desfazer. */}
+                {textoOriginal !== null && !gossipficando ? (
+                  <button
+                    type="button"
+                    disabled={revelando}
+                    onClick={desfazerGossipficacao}
+                    className="font-body text-[11px] text-link underline disabled:opacity-40"
+                  >
+                    desfazer
+                  </button>
+                ) : null}
+
                 <span
                   id="gossipficar-hint"
                   aria-live="polite"
@@ -315,9 +391,11 @@ export default function NewPostPage() {
                 >
                   {gossipficando
                     ? 'a fonte está reescrevendo…'
-                    : gossipificado
-                      ? 'já passou pela Gossip Girl — vale uma vez por texto.'
-                      : 'deixa a Gossip Girl reescrever do jeito dela.'}
+                    : revelando
+                      ? 'escrevendo…'
+                      : gossipificado
+                        ? 'já passou pela Gossip Girl — vale uma vez por texto.'
+                        : 'deixa a Gossip Girl reescrever do jeito dela.'}
                 </span>
               </div>
             </div>
