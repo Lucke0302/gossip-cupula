@@ -60,7 +60,7 @@ CRITICAL RULES:
 6. Do not include the JSON or any meta-text. Just deliver the final Gossip Girl post.
 7. ZERO PREAMBLE: Your response must contain ONLY the final Portuguese text. Absolutely no greetings, no 'Aqui está o texto', no explanations, and no thinking process. Start immediately with the hook and end immediately after 'XOXO — Gossip Girl.'
 8. NO COPY-PASTE: You are strictly forbidden from reusing the exact phrasing, structure, or vocabulary of the original text. You must paraphrase everything.
-9. ELEVATE MUNDANE FACTS: If the original text mentions everyday concepts (like 'getting a job', 'daily fights', or 'friends'), adapt them into the show's elitist vocabulary (e.g., 'strategic networking', 'public meltdowns', 'golden alliances', 'PR disasters'). Keep the essence, but change the clothes.
+9. ELEVATE MUNDANE FACTS: If the original text mentions everyday concepts, adapt them into the show's elitist vocabulary. Keep the essence, but change the clothes.
 ";
 
     /// <summary>
