@@ -37,6 +37,7 @@ public class PostService(
         EditedBy = post.EditedBy,
         // Array "text[]" do próprio post: vem na mesma linha, sem join.
         ImageUrls = post.ImageUrls,
+        IsGossipfyed = post.IsGossipfyed,
         // COUNT correlacionado no MESMO SELECT: uma query para a lista
         // inteira, não uma query por post (N+1).
         CommentCount = post.Comments.Count(),
@@ -66,7 +67,7 @@ public class PostService(
     /// Publica um post sem imagens (contrato JSON: <c>title</c> + <c>content</c>).
     /// </summary>
     public Task<PostResponseDto> CreateAsync(CreatePostDto createPostDto) =>
-        CreateAsync(createPostDto.Title, createPostDto.Content, []);
+        CreateAsync(createPostDto.Title, createPostDto.Content, [], createPostDto.IsGossipfyed);
 
     /// <summary>
     /// Publica um post vindo de <c>multipart/form-data</c> (texto + imagens).
@@ -84,7 +85,7 @@ public class PostService(
             ? []
             : (await Task.WhenAll(images.Select(image => storageService.UploadImageAsync(image)))).ToList();
 
-        return await CreateAsync(ResolveTitle(formRequest.Title, formRequest.Text), formRequest.Text, imageUrls);
+        return await CreateAsync(ResolveTitle(formRequest.Title, formRequest.Text), formRequest.Text, imageUrls, formRequest.IsGossipfyed);
     }
 
     /// <summary>
@@ -92,7 +93,7 @@ public class PostService(
     /// evento SignalR). Ponto único de escrita: os dois contratos de entrada
     /// (JSON e multipart) convergem para cá.
     /// </summary>
-    private async Task<PostResponseDto> CreateAsync(string title, string content, List<string> imageUrls)
+    private async Task<PostResponseDto> CreateAsync(string title, string content, List<string> imageUrls, bool isGossipfyed)
     {
         var post = new Post
         {
@@ -100,6 +101,7 @@ public class PostService(
             Title = title.Trim(),
             Content = content.Trim(),
             ImageUrls = imageUrls,
+            IsGossipfyed = isGossipfyed,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -134,12 +136,31 @@ public class PostService(
         EnsureCanManagePost(currentUserRole);
 
         post.Content = updatePostDto.Content.Trim();
+
+        // Só altera a flag quando o frontend a enviou explicitamente; do
+        // contrário, preserva o estado atual (não "des-gossipifica" à toa).
+        if (updatePostDto.IsGossipfyed.HasValue)
+        {
+            post.IsGossipfyed = updatePostDto.IsGossipfyed.Value;
+        }
+
         post.EditedAt = DateTime.UtcNow;
         post.EditedBy = currentUserId;
 
         await dbContext.SaveChangesAsync();
 
         return await GetByIdAsync(postId);
+    }
+
+    public async Task<bool?> GetIsGossipfyedAsync(Guid postId)
+    {
+        // FirstOrDefaultAsync em um bool? devolve null quando o post não existe
+        // (default(bool?)), o que distingue "inexistente" de "não gossipificado".
+        return await dbContext.Posts
+            .AsNoTracking()
+            .Where(post => post.Id == postId)
+            .Select(post => (bool?)post.IsGossipfyed)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<bool> DeleteAsync(Guid postId, string currentUserRole)

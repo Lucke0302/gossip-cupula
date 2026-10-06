@@ -35,6 +35,13 @@ public class Post
     /// </summary>
     public List<string> ImageUrls { get; set; } = new();
 
+    /// <summary>
+    /// Indica se o conteúdo do post já passou pelo pipeline de gossipficação
+    /// (IA da Anthropic). Uma vez verdadeiro, o post não pode ser transformado
+    /// novamente (ver <c>POST /api/ai/gossipfy</c>).
+    /// </summary>
+    public bool IsGossipfyed { get; set; } = false;
+
     public ICollection<PostVote> Votes { get; set; } = new List<PostVote>();
 
     /// <summary>

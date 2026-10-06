@@ -54,6 +54,12 @@ public class CreatePostFormRequest : IValidatableObject
     /// <summary>Arquivos de imagem anexados (opcional).</summary>
     public List<IFormFile>? Images { get; set; }
 
+    /// <summary>
+    /// Indica se o conteúdo enviado já passou pelo pipeline de gossipficação
+    /// (IA). Campo opcional do formulário; padrão <c>false</c>.
+    /// </summary>
+    public bool IsGossipfyed { get; set; } = false;
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         // [Required] barra vazio, mas deixa passar texto só com espaços.

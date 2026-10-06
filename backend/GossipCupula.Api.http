@@ -117,3 +117,16 @@ DELETE {{GossipCupula.Api_HostAddress}}/api/events/{{eventId}}
 Authorization: Bearer {{token}}
 
 ###
+
+# Gossipficar um texto pela IA. `postId` é opcional: quando informado, a API
+# recusa (400) se o post já foi gossipificado antes.
+POST {{GossipCupula.Api_HostAddress}}/api/ai/gossipfy
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "content": "A Serena terminou o namoro com o Nate no meio do jantar de aniversário da mãe dele e saiu de lá com o Dan.",
+  "postId": null
+}
+
+###

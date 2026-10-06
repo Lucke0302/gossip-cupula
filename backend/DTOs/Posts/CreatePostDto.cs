@@ -14,4 +14,10 @@ public class CreatePostDto
 
     [Required(ErrorMessage = "O conteúdo é obrigatório.")]
     public string Content { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Indica se o conteúdo enviado já passou pelo pipeline de gossipficação (IA).
+    /// Padrão <c>false</c> para posts comuns.
+    /// </summary>
+    public bool IsGossipfyed { get; set; } = false;
 }

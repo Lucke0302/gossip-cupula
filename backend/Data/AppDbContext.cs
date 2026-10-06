@@ -95,6 +95,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                   .IsRequired()
                   .HasDefaultValueSql("ARRAY[]::text[]");
 
+            // Flag de gossipficação (IA). NOT NULL + DEFAULT false: a migração é
+            // aditiva e não pode quebrar quando a tabela já tem posts.
+            entity.Property(p => p.IsGossipfyed)
+                  .HasDefaultValue(false);
+
             // Posts são 100% anônimos: não existe mais FK para User (Owner).
         });
 

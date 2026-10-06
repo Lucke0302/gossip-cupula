@@ -36,6 +36,11 @@ public class PostResponseDto
     public List<string> ImageUrls { get; set; } = new();
 
     /// <summary>
+    /// Indica se o post já passou pelo pipeline de gossipficação (IA).
+    /// </summary>
+    public bool IsGossipfyed { get; set; }
+
+    /// <summary>
     /// Quantidade de comentários do post.
     /// <para>
     /// Vem projetada na própria consulta (COUNT correlacionado no mesmo

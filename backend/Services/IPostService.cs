@@ -12,6 +12,13 @@ public interface IPostService
 
     Task<PostResponseDto?> GetByIdAsync(Guid id);
 
+    /// <summary>
+    /// Retorna se o post já foi gossipificado (<c>IsGossipfyed</c>).
+    /// <c>null</c> quando o post não existe. Usado pelo endpoint de IA para
+    /// impedir a dupla gossipficação.
+    /// </summary>
+    Task<bool?> GetIsGossipfyedAsync(Guid postId);
+
     Task<PostResponseDto> CreateAsync(CreatePostDto createPostDto);
 
     /// <summary>

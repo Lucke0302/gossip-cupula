@@ -441,7 +441,59 @@ Exige autenticação (`[Authorize]`), como o resto dos dados.
 **Regra:** confirmação inexistente → cria; existente → remove (toggle). A chave
 composta barra a duplicata no banco, e o conflito vira **409** em vez de 500.
 
-## 7. Hub SignalR — `GossipHub`
+## 7. IA ("Gossipficar") — `AITransformationController` (base `/api/ai`)
+
+Exige autenticação (`[Authorize]`): apenas usuários logados podem usar a IA.
+
+### `POST /api/ai/gossipfy`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Body (entrada) | `GossipfyRequest` — `content` (obrigatório; não pode ser vazio) e `postId` (opcional, `Guid`) |
+| Resposta 200 | `GossipfyResponse` — `{ originalContent, transformedContent, warnings }` |
+| Resposta 400 | `content` ausente/vazio — `{ "message": "O campo 'content' é obrigatório e não pode ser vazio." }` |
+| Resposta 400 | Post já gossipificado — `{ "message": "Este post já foi gossipificado e não pode ser transformado novamente." }` |
+| Resposta 401 | Token ausente/inválido |
+| Resposta 404 | `postId` informado e o post não existe |
+| Resposta 502 | Falha não mapeável na API da Anthropic (erros 401/403/404/429/5xx são repassados como `ProblemDetails`) |
+
+```jsonc
+// request
+{
+  "content": "A Serena terminou o namoro...",
+  "postId": "00000000-0000-0000-0000-000000000000" // opcional
+}
+
+// 200
+{
+  "originalContent": "...",
+  "transformedContent": "Ei, Upper East Siders... XOXO — Gossip Girl.",
+  "warnings": []
+}
+```
+
+**Pipeline de duas etapas** (IA da Anthropic — Claude):
+1. **Etapa A (análise):** o texto é enviado com o System Prompt de *Análise
+   Narrativa* e o modelo devolve um JSON, desserializado em `NarrativeAnalysis`.
+   Falha no parse **não** interrompe o fluxo: entra um aviso em `warnings` e a
+   redação segue só com o texto original.
+2. **Etapa B (redação):** texto original + JSON da Etapa A geram a fofoca final
+   em PT-BR ("XOXO — Gossip Girl.").
+
+> **Prevenção de dupla gossipficação:** quando `postId` é informado, o backend
+> consulta `Posts.IsGossipfyed`. Se o post já foi transformado, responde **400**
+> sem chamar a IA. A flag é persistida pelos endpoints de criação/atualização de
+> post (`isGossipfyed`), enviada pelo frontend.
+
+> **Configuração:** chave em `Anthropic:ApiKey` (appsettings/secrets) ou na
+> variável de ambiente `ANTHROPIC_API_KEY`. Modelos: `AnalysisModel`
+> (Etapa A) e `RedactionModel` (Etapa B). A chamada HTTP usa resiliência (retry
+> exponencial em erros transitórios).
+
+---
+
+## 8. Hub SignalR — `GossipHub`
 
 | Item | Detalhe |
 |------|---------|

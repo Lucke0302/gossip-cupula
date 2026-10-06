@@ -1,4 +1,5 @@
 using System.Text;
+using GossipCupula.Api.Configuration;
 using GossipCupula.Api.Data;
 using GossipCupula.Api.Hubs;
 using GossipCupula.Api.Models;
@@ -7,8 +8,11 @@ using GossipCupula.Api.Workers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Polly;
+using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -82,6 +86,27 @@ builder.Services.AddScoped<IEventService, EventService>();
 // Necessário para o EventService ler o usuário autenticado (claims do JWT) —
 // é de lá que sai o `isGoing` e o `authorName` do evento assinado.
 builder.Services.AddHttpContextAccessor();
+
+// ---------- IA / Anthropic (pipeline "Gossipficar") ----------
+// Opções lidas da seção "Anthropic" (appsettings/secrets) ou da variável de
+// ambiente ANTHROPIC_API_KEY. A chave NUNCA é hardcoded.
+builder.Services.Configure<AnthropicOptions>(
+    builder.Configuration.GetSection(AnthropicOptions.SectionName));
+
+// Monta apenas os prompts (sem estado) — Singleton de propósito.
+builder.Services.AddSingleton<GossipficarPromptBuilder>();
+
+// Cliente HTTP tipado para a API da Anthropic, com política de resiliência
+// (retry exponencial em erros transitórios: 5xx, 408 e HttpRequestException).
+builder.Services.AddHttpClient<IAITextTransformationService, ClaudeTextTransformationService>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<AnthropicOptions>>().Value;
+
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds <= 0 ? 60 : options.TimeoutSeconds);
+}).AddPolicyHandler(HttpPolicyExtensions
+        .HandleTransientHttpError() // Intercepta 5xx (como o 502), 408 e HttpRequestException
+        .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))));
 
 // Registra o serviço de storage (OCI Object Storage). Singleton de propósito:
 // o ObjectStorageClient é caro de criar, é thread-safe e resolve as
