@@ -1,3 +1,4 @@
+using GossipCupula.Api.DTOs.Common;
 using GossipCupula.Api.DTOs.Posts;
 
 namespace GossipCupula.Api.Services;
@@ -8,7 +9,12 @@ namespace GossipCupula.Api.Services;
 /// </summary>
 public interface IPostService
 {
-    Task<List<PostResponseDto>> GetAllAsync();
+    /// <summary>
+    /// Uma página de posts, dos mais recentes para os mais antigos, paginada
+    /// por cursor opaco. Substitui o retorno do array inteiro — o feed deixa de
+    /// fatiar no cliente.
+    /// </summary>
+    Task<Page<PostResponseDto>> GetPageAsync(string? cursor, int limit);
 
     Task<PostResponseDto?> GetByIdAsync(Guid id);
 

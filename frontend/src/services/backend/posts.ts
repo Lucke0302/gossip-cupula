@@ -9,15 +9,15 @@ import {
   type VoteResult,
   type VoteValue,
 } from '../../types';
-import { backendPostListSchema, backendPostSchema, toPost, toPostDetail } from './dto';
+import { backendPostPageSchema, backendPostSchema, toPost, toPostDetail } from './dto';
 
 /* ------------------------------------------------------------------ *
  * Posts contra a API de verdade.
  *
- * A API devolve `GET /posts` como um array inteiro, sem paginação. Até
- * existir cursor do lado do servidor, a fatia é feita aqui — a interface
- * de fora continua sendo a mesma `Page<Post>` com cursor opaco, então as
- * telas não sabem (nem precisam saber) onde a paginação acontece.
+ * `GET /posts` já devolve o envelope paginado `{ items, nextCursor }`, com
+ * cursor opaco gerado no servidor (keyset). A interface de fora continua a
+ * mesma `Page<Post>`: o adapter só traduz os DTOs e repassa o `nextCursor`,
+ * então as telas não sabem (nem precisam saber) onde a fatia acontece.
  * ------------------------------------------------------------------ */
 
 const TAMANHO_DA_PAGINA = 4;
@@ -26,23 +26,15 @@ export async function listPosts(
   cursor: string | null,
   signal?: AbortSignal,
 ): Promise<Page<Post>> {
-  const dtos = await request('/posts', {
-    schema: backendPostListSchema,
+  const page = await request('/posts', {
+    query: { cursor: cursor ?? undefined, limit: TAMANHO_DA_PAGINA },
+    schema: backendPostPageSchema,
     signal,
   });
 
-  const posts = dtos.map(toPost);
-
-  // O cursor é o id do último post entregue. Se ele sumiu entre uma
-  // página e outra (post apagado), recomeça do topo em vez de quebrar.
-  const inicio = cursor ? posts.findIndex((post) => post.id === cursor) + 1 : 0;
-  const fatia = posts.slice(inicio, inicio + TAMANHO_DA_PAGINA);
-  const ultimo = fatia.at(-1);
-  const temMais = inicio + TAMANHO_DA_PAGINA < posts.length;
-
   return {
-    items: fatia,
-    nextCursor: temMais && ultimo ? ultimo.id : null,
+    items: page.items.map(toPost),
+    nextCursor: page.nextCursor,
   };
 }
 

@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Text.Json;
 using GossipCupula.Api.Data;
+using GossipCupula.Api.DTOs.Common;
 using GossipCupula.Api.DTOs.Posts;
 using GossipCupula.Api.Hubs;
 using GossipCupula.Api.Models;
@@ -26,6 +27,12 @@ public class PostService(
     /// <summary>Tamanho máximo do título, alinhado à coluna <c>Posts.Title</c>.</summary>
     private const int MaxTitleLength = 200;
 
+    /// <summary>Tamanho da página quando a query string não informa <c>limit</c>.</summary>
+    public const int DefaultPageSize = 10;
+
+    /// <summary>Teto de itens por página — protege de um <c>limit</c> gigante.</summary>
+    public const int MaxPageSize = 50;
+
     private static readonly Expression<Func<Post, PostResponseDto>> ToResponseDto = post => new PostResponseDto
     {
         Id = post.Id,
@@ -45,13 +52,42 @@ public class PostService(
         DislikesCount = post.Votes.Count(vote => vote.Vote == VoteType.Dislike)
     };
 
-    public async Task<List<PostResponseDto>> GetAllAsync()
+    public async Task<Page<PostResponseDto>> GetPageAsync(string? cursor, int limit)
     {
-        return await dbContext.Posts
-            .AsNoTracking()
+        var pageSize = Math.Clamp(limit, 1, MaxPageSize);
+
+        var query = dbContext.Posts.AsNoTracking();
+
+        // Keyset (e não offset): a partir do último post entregue, só o que vem
+        // DEPOIS dele em (CreatedAt DESC, Id DESC). O Id desempata posts
+        // gravados no mesmo instante, dando à paginação uma ordem determinística.
+        if (OpaqueCursor.TryDecode(cursor, out OpaqueCursor.CursorValue after))
+        {
+            query = query.Where(post =>
+                post.CreatedAt < after.CreatedAt ||
+                (post.CreatedAt == after.CreatedAt && post.Id.CompareTo(after.Id) < 0));
+        }
+
+        // Um item a mais que a página: se ele vier, existe página seguinte.
+        // A projeção traz, num SELECT só, o content do post e os agregados
+        // (COUNT de comentários/votos) — nada de N+1.
+        var rows = await query
             .OrderByDescending(post => post.CreatedAt)
+            .ThenByDescending(post => post.Id)
+            .Take(pageSize + 1)
             .Select(ToResponseDto)
             .ToListAsync();
+
+        var hasMore = rows.Count > pageSize;
+        var items = hasMore ? rows[..pageSize] : rows;
+
+        return new Page<PostResponseDto>
+        {
+            Items = items,
+            NextCursor = hasMore && items.Count > 0
+                ? OpaqueCursor.Encode(items[^1].CreatedAt, items[^1].Id)
+                : null
+        };
     }
 
     public async Task<PostResponseDto?> GetByIdAsync(Guid id)

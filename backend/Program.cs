@@ -83,6 +83,12 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 // Registra o serviço de eventos do calendário (Scoped: uma instância por request).
 builder.Services.AddScoped<IEventService, EventService>();
 
+// Registra os serviços de galeria e links (Scoped). Ambos achatam dados que
+// vêm dos posts (imagens do array ImageUrls e URLs do texto), paginados por
+// cursor opaco.
+builder.Services.AddScoped<IPhotoService, PhotoService>();
+builder.Services.AddScoped<ILinkService, LinkService>();
+
 // Registra o repositório de rastreio de gossipficação (tabela GossipifiedPosts).
 // Guarda a dupla gossipficação e cria o token de rastreio devolvido pela IA.
 builder.Services.AddScoped<IGossipifiedPostService, GossipifiedPostService>();

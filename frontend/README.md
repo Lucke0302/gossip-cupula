@@ -185,10 +185,15 @@ de uso único enviado por e-mail.
 
 ### 4. Funcionalidades que faltam
 
-| o que falta          | efeito no front                                                     |
-| -------------------- | -------------------------------------------------------------------- |
-| fotos e links        | `/photos` e `/links` não existem — idem                              |
-| paginação            | `GET /posts` devolve o array inteiro; a fatia é feita no cliente     |
+| o que faltava        | situação hoje                                                              |
+| -------------------- | -------------------------------------------------------------------------- |
+| fotos e links        | ✅ resolvido — `GET /photos` e `GET /links` existem e a tela consome a API   |
+| paginação            | ✅ resolvido — `GET /posts` pagina no servidor (cursor opaco, keyset)       |
+
+> O contrato de **fotos e links** não tem backing completo no banco: só existem
+> `Posts.ImageUrls` e `Posts.Content`. A API deriva `alt`/`caption`/
+> `width`/`height` (fotos) e `label`/`note`/`section` (links) — o detalhamento
+> está em `backend/endpoint-mapping.md`, seção "Galeria e links".
 
 #### Contrato dos eventos (o calendário)
 
@@ -339,10 +344,10 @@ src/services/
   auth.service.ts        login, cadastro, confirmação, sessão, logout
   posts.service.ts       escolhe a fonte (mocks ou API) e expõe uma só interface
   backend/dto.ts         DTO real da API + conversão para o domínio anônimo
-  backend/posts.ts       posts contra a API, com paginação feita no cliente
+  backend/posts.ts       posts contra a API, com paginação por cursor no servidor
   comments.service.ts    comentários, já contra a API
   events.service.ts      eventos do calendário — contra a API (`/events`)
-  gallery.service.ts     idem
+  gallery.service.ts     fotos e links — contra a API (`/photos`, `/links`)
   mock/                  dados e servidor falso
 src/lib/
   http.ts                client HTTP único
@@ -365,9 +370,9 @@ byte a byte, com o `Content-Type` original (boundary incluído). Decodificar o
 formulário ali e reenviar como JSON apaga os campos — a API recebe o request sem
 `Text` e responde 400 ("O texto é obrigatório.").
 
-Fotos e links passam `source: 'mock'`, o que força a camada falsa mesmo com a
-API ligada — sem isso essas telas levariam 404. Quando as rotas existirem, é só
-tirar o `source`.
+Fotos e links **seguem a flag como o resto**: `gallery.service.ts` não passa
+mais `source: 'mock'` — `GET /photos` e `GET /links` vêm da API (e dos mocks só
+com `VITE_USE_MOCKS=true`). Comentários ainda passam `source: 'mock'`.
 
 ### Endpoints que o front usa
 
@@ -378,14 +383,15 @@ tirar o `source`.
 | `POST` | `/auth/confirm-email` | `POST /api/Auth/confirm-email` (público)                    |
 | `GET`  | `/auth/session`       | lido do cookie pelo proxy, sem ir à API                     |
 | `POST` | `/auth/logout`        | limpa o cookie; a API não tem logout                        |
-| `GET`  | `/posts`              | `GET /api/posts` → traduzido e paginado no cliente          |
+| `GET`  | `/posts`              | `GET /api/posts` → `{ items, nextCursor }` (paginação no servidor) |
 | `GET`  | `/posts/:id`          | `GET /api/posts/{id}` → traduzido                           |
 | `POST` | `/posts`              | `POST /api/posts` em `multipart/form-data` (`Text`, `Title`, `Images`) |
 | `GET`  | `/events?month=`      | `GET /api/events?month=YYYY-MM` → `{ items, nextCursor: null }` |
 | `POST` | `/events`             | `POST /api/events` com `{ date, title, time, place, color, signed }` |
 | `POST` | `/events/:id/going`   | `POST /api/events/{id}/going` → `{ eventId, goingCount, isGoing }` |
 | `DELETE` | `/events/:id`       | `DELETE /api/events/{id}` → 204                               |
-| —      | fotos e links         | mocks                                                   |
+| `GET`  | `/photos`             | `GET /api/photos` → `{ items, nextCursor }`                  |
+| `GET`  | `/links`              | `GET /api/links` → `{ items, nextCursor }`                   |
 
 O formato exato de cada tipo está em `src/types/index.ts` — os schemas Zod
 **são** a especificação.

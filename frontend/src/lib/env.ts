@@ -19,8 +19,9 @@ export const API_URL = (rawApiUrl || '/api').replace(/\/+$/, '');
  * de mentira com cara de verdade, sem ninguem perceber. Agora, sem
  * configuracao, ele fala com a API e falha alto se ela nao responder.
  *
- * Atencao: isto NAO desliga tudo. Comentarios, fotos e links passam
- * `source: 'mock'` nos services porque a API nao tem essas rotas — esses
- * seguem mockados ate' o backend implementa-las.
+ * Atencao: isto NAO desliga tudo. Comentarios ainda passam
+ * `source: 'mock'` no service porque a API nao tem essas rotas — segue
+ * mockado ate' o backend implementa-las. Posts, eventos, fotos e links vao
+ * pra API de verdade; mocks so' entram com VITE_USE_MOCKS=true.
  */
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';

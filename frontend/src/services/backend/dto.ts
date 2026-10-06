@@ -37,7 +37,20 @@ export const backendPostSchema = z
   })
   .strict();
 
-export const backendPostListSchema = z.array(backendPostSchema);
+/**
+ * Página de posts, como a API devolve: `{ items, nextCursor }` — o mesmo
+ * envelope que o front já usa para comentários e eventos (`pageSchema`).
+ *
+ * `nextCursor` é um cursor opaco gerado no servidor (keyset). Antes,
+ * `GET /posts` mandava o array inteiro e a fatia acontecia aqui no cliente;
+ * agora a fatia é do servidor e o campo vem pronto.
+ */
+export const backendPostPageSchema = z
+  .object({
+    items: z.array(backendPostSchema),
+    nextCursor: z.string().nullable(),
+  })
+  .strict();
 
 export type BackendPost = z.infer<typeof backendPostSchema>;
 

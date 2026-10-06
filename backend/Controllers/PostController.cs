@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using GossipCupula.Api.DTOs.Common;
 using GossipCupula.Api.DTOs.Posts;
 using GossipCupula.Api.DTOs.Votes;
 using GossipCupula.Api.Services;
@@ -31,11 +32,22 @@ public class PostController : ControllerBase
         _voteService = voteService;
     }
 
+    /// <summary>
+    /// Uma página do feed (mais recentes primeiro), paginada por cursor opaco.
+    /// Query string: <c>cursor</c> (opaco, devolvido no campo <c>nextCursor</c>
+    /// da página anterior) e <c>limit</c> (1..50, padrão 10).
+    /// </summary>
+    /// <response code="200">Envelope <c>{ items, nextCursor }</c>.</response>
+    /// <response code="401">Token ausente/inválido.</response>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PostResponseDto>>> GetAll()
+    [ProducesResponseType(typeof(Page<PostResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<Page<PostResponseDto>>> GetPage(
+        [FromQuery] string? cursor = null,
+        [FromQuery] int limit = PostService.DefaultPageSize)
     {
-        var posts = await _postService.GetAllAsync();
-        return Ok(posts);
+        var page = await _postService.GetPageAsync(cursor, limit);
+        return Ok(page);
     }
 
     [HttpGet("{id:guid}")]

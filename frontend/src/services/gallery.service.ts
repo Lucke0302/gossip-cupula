@@ -4,18 +4,18 @@ import { linkSchema, pageSchema, photoSchema, type LinkItem, type Page, type Pho
 /* ------------------------------------------------------------------ *
  * Galeria e links.
  *
- * Como os comentarios: a API nao tem /photos nem /links, entao estas
- * chamadas ficam presas na camada de mocks (`source: 'mock'`) ate' as
- * rotas existirem. O contrato esperado esta' no README.
+ * As duas rotas já existem na API (`GET /api/photos` e `GET /api/links`) e
+ * devolvem o mesmo envelope paginado `{ items, nextCursor }` do resto do
+ * site. Sem `source: 'mock'`: a fonte segue a flag VITE_USE_MOCKS.
  * ------------------------------------------------------------------ */
 
 const photoPageSchema = pageSchema(photoSchema);
 const linkPageSchema = pageSchema(linkSchema);
 
 export function listPhotos(signal?: AbortSignal): Promise<Page<Photo>> {
-  return request('/photos', { schema: photoPageSchema, source: 'mock', signal });
+  return request('/photos', { schema: photoPageSchema, signal });
 }
 
 export function listLinks(signal?: AbortSignal): Promise<Page<LinkItem>> {
-  return request('/links', { schema: linkPageSchema, source: 'mock', signal });
+  return request('/links', { schema: linkPageSchema, signal });
 }

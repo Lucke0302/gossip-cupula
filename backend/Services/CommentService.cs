@@ -1,4 +1,3 @@
-using System.Text;
 using GossipCupula.Api.Data;
 using GossipCupula.Api.DTOs.Comments;
 using GossipCupula.Api.DTOs.Common;
@@ -56,8 +55,9 @@ public class CommentService(AppDbContext dbContext) : ICommentService
 
         // Keyset (e não offset): a partir do último item entregue, só o que
         // vem DEPOIS dele em (CreatedAt DESC, Id DESC). O Id desempata
-        // comentários gravados no mesmo instante.
-        if (CommentCursor.TryDecode(cursor, out var after))
+        // comentários gravados no mesmo instante. O cursor é o mesmo helper
+        // opaco usado por posts, galeria e links.
+        if (OpaqueCursor.TryDecode(cursor, out OpaqueCursor.CursorValue after))
         {
             query = query.Where(comment =>
                 comment.CreatedAt < after.CreatedAt ||
@@ -80,7 +80,7 @@ public class CommentService(AppDbContext dbContext) : ICommentService
             {
                 Id = row.Id,
                 Text = row.Text,
-                PublishedAt = CoarsenToHour(row.CreatedAt)
+                PublishedAt = CoarseTime.ToHourUtc(row.CreatedAt)
             })
             .ToList();
 
@@ -88,7 +88,7 @@ public class CommentService(AppDbContext dbContext) : ICommentService
         {
             Items = items,
             NextCursor = hasMore && page.Count > 0
-                ? CommentCursor.Encode(page[^1].CreatedAt, page[^1].Id)
+                ? OpaqueCursor.Encode(page[^1].CreatedAt, page[^1].Id)
                 : null
         };
     }
@@ -111,95 +111,6 @@ public class CommentService(AppDbContext dbContext) : ICommentService
     {
         Id = comment.Id,
         Text = comment.Text,
-        PublishedAt = CoarsenToHour(comment.CreatedAt)
+        PublishedAt = CoarseTime.ToHourUtc(comment.CreatedAt)
     };
-
-    /// <summary>
-    /// Arredonda para a hora cheia em UTC.
-    /// <para>
-    /// É regra de anonimato, não de formatação: um instante com precisão de
-    /// segundos cruzado com o horário de acesso denunciaria quem comentou
-    /// ("foi quem saiu da mesa 23h47"). O front valida exatamente isso
-    /// (<c>coarseTimestampSchema</c>) e rejeita o valor se vier "cheio".
-    /// </para>
-    /// </summary>
-    private static DateTime CoarsenToHour(DateTime value)
-    {
-        var utc = value.Kind switch
-        {
-            DateTimeKind.Utc => value,
-            DateTimeKind.Local => value.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
-        };
-
-        return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, 0, 0, DateTimeKind.Utc);
-    }
-
-    /// <summary>Posição do último item entregue — a chave do keyset.</summary>
-    private readonly record struct CursorValue(DateTime CreatedAt, Guid Id);
-
-    /// <summary>
-    /// Empacota e desempacota o cursor em base64url.
-    /// <para>
-    /// É opaco por convenção: o cliente só devolve a string que recebeu, nada
-    /// de <c>?page=2</c>, que exporia ordem e volume. Um cursor inválido é
-    /// ignorado (a listagem recomeça do topo) em vez de virar 400 — mesmo
-    /// comportamento do adaptador de posts do front quando o cursor some.
-    /// </para>
-    /// </summary>
-    private static class CommentCursor
-    {
-        public static string Encode(DateTime createdAtUtc, Guid id) =>
-            Base64UrlEncode($"{createdAtUtc.Ticks}|{id:N}");
-
-        public static bool TryDecode(string? cursor, out CursorValue value)
-        {
-            value = default;
-
-            if (string.IsNullOrWhiteSpace(cursor) || !TryBase64UrlDecode(cursor, out var decoded))
-            {
-                return false;
-            }
-
-            var parts = decoded.Split('|');
-            if (parts.Length != 2 ||
-                !long.TryParse(parts[0], out var ticks) ||
-                !Guid.TryParseExact(parts[1], "N", out var id))
-            {
-                return false;
-            }
-
-            value = new CursorValue(new DateTime(ticks, DateTimeKind.Utc), id);
-            return true;
-        }
-
-        private static string Base64UrlEncode(string text) =>
-            Convert.ToBase64String(Encoding.UTF8.GetBytes(text))
-                   .Replace('+', '-')
-                   .Replace('/', '_')
-                   .TrimEnd('=');
-
-        private static bool TryBase64UrlDecode(string cursor, out string decoded)
-        {
-            decoded = string.Empty;
-
-            try
-            {
-                var base64 = cursor.Replace('-', '+').Replace('_', '/');
-                base64 = (base64.Length % 4) switch
-                {
-                    2 => base64 + "==",
-                    3 => base64 + "=",
-                    _ => base64
-                };
-
-                decoded = Encoding.UTF8.GetString(Convert.FromBase64String(base64));
-                return true;
-            }
-            catch (FormatException)
-            {
-                return false;
-            }
-        }
-    }
 }

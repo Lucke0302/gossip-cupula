@@ -158,9 +158,16 @@ Todos os endpoints de posts e votos exigem **`[Authorize]`** (header
 | Item | Detalhe |
 |------|---------|
 | Autenticação | ✅ Sim |
-| Parâmetros | — |
-| Resposta 200 | Lista de `PostResponseDto` (mais recentes primeiro) |
+| Parâmetros | `cursor` (query, opaco) e `limit` (query, 1..50, padrão 10) |
+| Resposta 200 | `Page<PostResponseDto>` — `{ items, nextCursor }`, mais recentes primeiro |
 | Resposta 401 | Token ausente/inválido |
+
+> **Paginação no servidor (keyset).** O feed **não** devolve mais o array
+> inteiro: a fatia é feita no banco, em `ORDER BY CreatedAt DESC, Id DESC`, e
+> o `nextCursor` é um base64url opaco do par `(CreatedAt, Id)` do último item
+> entregue. O `Id` desempata posts gravados no mesmo instante; um cursor
+> inválido é ignorado (a listagem recomeça do topo). `limit` é limitado a
+> 1..50. O `PostResponseDto` por item não mudou.
 
 ### `GET /api/posts/{id}`
 
@@ -614,6 +621,75 @@ connection.start();
 
 > `time` e `place` são opcionais; `signed` é só a **intenção** de assinar — o
 > nome vem do token.
+
+---
+
+## 7. Galeria e links — `PhotosController` e `LinksController`
+
+Exigem autenticação (`[Authorize]`), como o resto dos dados. Os dois devolvem
+o envelope `{ items, nextCursor }` (`pageSchema` no front, `.strict()`),
+paginado por cursor opaco — o mesmo keyset de comentários/posts.
+
+Os dois endpoints são **derivados dos posts**: o banco não tem tabela de
+imagens nem de links. Os campos que a API não consegue tirar do banco estão
+anotados abaixo (e o porquê). A consulta sempre projeta só as colunas
+necessárias antes de trazer para a memória.
+
+### `GET /api/photos`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Parâmetros | `cursor` (query, opaco) e `limit` (query, 1..60, padrão 12) |
+| Resposta 200 | `Page<PhotoResponseDto>` — `{ items, nextCursor }`, fotos mais recentes primeiro |
+| Resposta 401 | Token ausente/inválido |
+
+A lista é o **achatamento** (`SelectMany`) do array `Posts.ImageUrls`: cada
+imagem de cada post vira um item, na ordem `(CreatedAt do post DESC, Id DESC,
+índice da imagem ASC)`. A consulta projeta apenas `Id`, `Title`, `CreatedAt` e
+`ImageUrls` — nada de `Content` nem de agregados. URLs inválidas (vazias ou
+que não sejam absolutas http/https) são descartadas antes do keyset.
+
+**Mapeamento — o que vem do banco e o que é derivado:**
+
+| campo         | origem                                                               |
+| ------------- | -------------------------------------------------------------------- |
+| `id`          | derivado: `{postId:N}{índice:D2}` (id opaco por foto)                |
+| `url`         | `Posts.ImageUrls[i]` (trim + exige URL absoluta http/https)          |
+| `alt`         | derivado: texto fixo (o banco não guarda descrição por imagem)       |
+| `caption`     | derivado: título do post                                            |
+| `width`       | derivado: `1200` (dimensão real não é guardada)                     |
+| `height`      | derivado: `1200`                                                     |
+| `publishedAt` | `Posts.CreatedAt` arredondado para a hora cheia em UTC               |
+
+> Guardar dimensão e legenda por imagem exigiria uma tabela própria (ou
+> metadado capturado no upload) — a URL sozinha não carrega isso.
+
+### `GET /api/links`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Parâmetros | `cursor` (query, opaco) e `limit` (query, 1..100, padrão 20) |
+| Resposta 200 | `Page<LinkResponseDto>` — `{ items, nextCursor }` |
+| Resposta 401 | Token ausente/inválido |
+
+As URLs externas são extraídas do **texto** do post (regex `https?://...`),
+sem repetição dentro do mesmo post e na ordem em que aparecem. Um
+`LIKE '%http%'` corta os posts sem link antes de trazer qualquer linha.
+
+**Mapeamento — o que é derivado** (o banco não guarda link curado):
+
+| campo     | origem                                                             |
+| --------- | ------------------------------------------------------------------ |
+| `id`      | derivado: `{postId:N}{índice:D2}`                                  |
+| `url`     | URL extraída do `Posts.Content` (http/https, sem pontuação final)  |
+| `label`   | derivado: host da URL (sem `www.`)                                 |
+| `note`    | derivado: título do post                                           |
+| `section` | derivado: sempre `links` (a seção não é inferível do texto)        |
+
+> Uma tabela de links curados resolveria `label`/`note`/`section` sem
+> adivinhação; enquanto a fonte é o texto do post, os três são derivados.
 
 ---
 
