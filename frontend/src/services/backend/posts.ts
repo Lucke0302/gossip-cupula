@@ -67,6 +67,9 @@ export function buildCreatePostForm(input: CreatePostInput): FormData {
   form.append('Text', input.content);
   form.append('Title', input.title);
   for (const file of input.images) form.append('Images', file);
+  // So' vai quando o texto passou pela IA. Campo ausente = post comum, e
+  // o binder deixa o Guid? como null — mandar string vazia daria 400.
+  if (input.gossipifiedPostId) form.append('GossipifiedPostId', input.gossipifiedPostId);
   return form;
 }
 
