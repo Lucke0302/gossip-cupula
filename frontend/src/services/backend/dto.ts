@@ -33,7 +33,19 @@ export const backendPostSchema = z
     /** URLs publicas das fotos. Lista vazia quando o post nao tem foto. */
     imageUrls: z.array(z.string()),
     /** COUNT projetado no mesmo SELECT da lista de posts. */
-    commentCount: z.number().int().min(0)
+    commentCount: z.number().int().min(0),
+    /**
+     * FK do registro de gossipficação, quando o texto veio da IA.
+     *
+     * Chegou junto com o endpoint `/api/ai/gossipfy` e derrubou o feed
+     * inteiro enquanto não estava listado aqui — o `.strict()` fez
+     * exatamente o que devia: gritar em vez de deixar passar calado.
+     *
+     * Não entra no domínio: a tela não precisa saber como o texto foi
+     * escrito. Se um dia quiser um selo "gossipficado" no post, é só
+     * mapear em `toPost`.
+     */
+    gossipifiedPostId: z.string().uuid().nullable(),
   })
   .strict();
 
