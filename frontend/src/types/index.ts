@@ -197,6 +197,11 @@ export const createPostSchema = z.object({
     .array(z.instanceof(File))
     .max(MAX_POST_IMAGES, `no máximo ${MAX_POST_IMAGES} fotos por post`)
     .default([]),
+  /*
+   * Token de rastreio da gossipficação (IA), quando o texto veio de lá.
+   * Vira a FK `Posts.GossipifiedPostId` no servidor; post comum fica null.
+   */
+  gossipifiedPostId: z.string().uuid().nullable().default(null),
 });
 
 export const createCommentSchema = z.object({
@@ -359,3 +364,27 @@ export const createEventSchema = z.object({
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+/* ------------------------------ gossipficar ------------------------------ */
+
+/**
+ * Resposta de `POST /api/ai/gossipfy`.
+ *
+ * `gossipifiedPostId` e' token de rastreio: o front guarda e reenvia ao
+ * publicar o post (vira a FK `Posts.GossipifiedPostId`). Reenviar numa
+ * segunda transformacao do mesmo texto da' 400 de proposito — e' o
+ * guarda contra gossipficar duas vezes.
+ *
+ * `warnings` nao bloqueia nada: se a etapa de analise falhar, a redacao
+ * acontece do mesmo jeito e o aviso vem junto.
+ */
+export const gossipfyResponseSchema = z
+  .object({
+    originalContent: z.string(),
+    transformedContent: z.string().min(1),
+    warnings: z.array(z.string()),
+    gossipifiedPostId: z.string().uuid(),
+  })
+  .strict();
+
+export type GossipfyResponse = z.infer<typeof gossipfyResponseSchema>;

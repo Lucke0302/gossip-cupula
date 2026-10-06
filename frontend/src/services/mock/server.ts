@@ -144,6 +144,20 @@ function toComment(comment: MockComment) {
   return { id: comment.id, text: comment.text, publishedAt: comment.publishedAt };
 }
 
+/**
+ * Ids de transformacoes ja' feitas nesta aba — espelha a tabela
+ * `GossipifiedPosts` do servidor, que e' o que barra a dupla
+ * gossipficacao.
+ */
+const gossipificados = new Set<string>();
+
+/** Guid com cara de Guid: o schema do front exige uuid de verdade. */
+function uuidFalso(): string {
+  const hex = (n: number) =>
+    Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-a${hex(3)}-${hex(12)}`;
+}
+
 /* ------------------------------ rotas ------------------------------ */
 
 type Handler = (
@@ -421,6 +435,44 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
 
       adminUsers.splice(indice, 1);
       return new Response(null, { status: 204 });
+    },
+  },
+
+  {
+    method: 'POST',
+    pattern: /^\/ai\/gossipfy$/,
+    handler: (_init) => {
+      if (!readSession()) return unauthorized();
+
+      const { content, gossipifiedPostId } = parseBody<{
+        content?: string;
+        gossipifiedPostId?: string;
+      }>(_init);
+
+      if (!content?.trim()) {
+        return fail(400, "O campo 'content' é obrigatório e não pode ser vazio.");
+      }
+
+      // Mesmo guarda da API: texto que já passou pela IA não passa de novo.
+      if (gossipifiedPostId && gossipificados.has(gossipifiedPostId)) {
+        return fail(
+          400,
+          'Este texto temporário já foi gossipificado e não pode ser transformado novamente.',
+        );
+      }
+
+      const novoId = uuidFalso();
+      gossipificados.add(novoId);
+
+      // A transformação de verdade é a IA da Anthropic; aqui só uma
+      // imitação do tom, pra tela poder ser exercitada sem chave de API.
+      const texto = content.trim();
+      return json({
+        originalContent: texto,
+        transformedContent: `Ei, cúpula. ${texto.charAt(0).toUpperCase()}${texto.slice(1)} Alguém aí vai ter que explicar isso no almoço de domingo. XOXO — Gossip Girl.`,
+        warnings: [],
+        gossipifiedPostId: novoId,
+      });
     },
   },
 
