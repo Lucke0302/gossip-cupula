@@ -7,6 +7,7 @@ import { Layout } from '../components/Layout';
 import { Button, FieldError, Label, TextArea, TextInput } from '../components/ui';
 import { useToast } from '../contexts/ToastContext';
 import { useCreatePost } from '../hooks/usePosts';
+import { gossipfy } from '../services/ai.service';
 import { messageFor } from '../lib/errors';
 import {
   createPostSchema,
@@ -111,6 +112,7 @@ export default function NewPostPage() {
   const fileInput = useRef<HTMLInputElement | null>(null);
   const [images, setImages] = useState<PreparedImage[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [gossipficando, setGossipficando] = useState(false);
 
   const {
     register,
@@ -121,10 +123,11 @@ export default function NewPostPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreatePostInput>({
     resolver: zodResolver(createPostSchema),
-    defaultValues: { title: '', content: '', images: [] },
+    defaultValues: { title: '', content: '', images: [], gossipifiedPostId: null },
   });
 
   const content = watch('content') ?? '';
+  const gossipificado = watch('gossipifiedPostId');
 
   /*
    * As fotos saem daqui por três caminhos diferentes (escolher, arrastar
@@ -188,6 +191,42 @@ export default function NewPostPage() {
     if (fileInput.current) fileInput.current.value = '';
   };
 
+  /**
+   * Manda o texto pra IA e troca o que está escrito pelo resultado.
+   *
+   * Vale só uma vez por texto: o servidor registra cada transformação e
+   * recusa a segunda com 400. Por isso o id volta pro formulário — ele é
+   * reenviado ao publicar (vira a FK do post) e também é o que trava o
+   * botão aqui.
+   */
+  const gossipficar = async () => {
+    const texto = content.trim();
+    if (texto.length < POST_CONTENT_MIN || gossipficando) return;
+
+    setGossipficando(true);
+    try {
+      const resultado = await gossipfy(texto, gossipificado);
+
+      setValue('content', resultado.transformedContent, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue('gossipifiedPostId', resultado.gossipifiedPostId, { shouldDirty: true });
+
+      // Avisos não bloqueiam: a redação acontece mesmo se a etapa de
+      // análise falhar. Mas a pessoa merece saber que saiu capenga.
+      if (resultado.warnings.length > 0) {
+        push(resultado.warnings[0] ?? 'a IA reclamou de alguma coisa.', 'info');
+      } else {
+        push('gossipficado. agora sim tem veneno.', 'success');
+      }
+    } catch (error) {
+      push(messageFor(error), 'error');
+    } finally {
+      setGossipficando(false);
+    }
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     try {
       const created = await mutation.mutateAsync(values);
@@ -247,6 +286,40 @@ export default function NewPostPage() {
                 </span>
               </div>
               <FieldError id="content-error">{errors.content?.message}</FieldError>
+
+              {/*
+                A IA reescreve o que está no campo acima. Fica junto do
+                textarea de propósito: é uma ação sobre aquele texto, não
+                uma etapa separada do formulário.
+              */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={
+                    gossipficando ||
+                    Boolean(gossipificado) ||
+                    content.trim().length < POST_CONTENT_MIN
+                  }
+                  aria-describedby="gossipficar-hint"
+                  onClick={() => void gossipficar()}
+                  className="!bg-eventos !text-white disabled:!bg-[#f2f2ea] disabled:!text-[#999]"
+                >
+                  {gossipficando ? 'gossipficando…' : 'gossipficar'}
+                </Button>
+
+                <span
+                  id="gossipficar-hint"
+                  aria-live="polite"
+                  className="font-body text-[10.5px] leading-[1.35] text-muted"
+                >
+                  {gossipficando
+                    ? 'a fonte está reescrevendo…'
+                    : gossipificado
+                      ? 'já passou pela Gossip Girl — vale uma vez por texto.'
+                      : 'deixa a Gossip Girl reescrever do jeito dela.'}
+                </span>
+              </div>
             </div>
 
             <div>
