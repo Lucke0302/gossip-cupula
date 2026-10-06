@@ -480,10 +480,17 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
     method: 'GET',
     pattern: /^\/events$/,
     handler: (_init, _params, url) => {
-      if (!readSession()) return unauthorized();
+      const session = readSession();
+      if (!session) return unauthorized();
       // Filtra pelo mes pedido (YYYY-MM). Sem mes, devolve tudo.
       const mes = url.searchParams.get('month');
-      const items = mes ? events.filter((e) => e.date.startsWith(mes)) : events;
+      const filtrados = mes ? events.filter((e) => e.date.startsWith(mes)) : events;
+      // `canEdit` e' resolvido por requisicao (depende de quem esta logado),
+      // por isso nao mora no dado estatico: Admin, ou o autor assinado.
+      const items = filtrados.map((e) => ({
+        ...e,
+        canEdit: session.role === 'admin' || e.authorName === session.nickname,
+      }));
       return json({ items: [...items].sort((a, b) => a.date.localeCompare(b.date)), nextCursor: null });
     },
   },
@@ -527,7 +534,45 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler }> = [
       };
 
       events.push(criado);
-      return json(criado, 201);
+      // `canEdit`: quem assinou e' o criador; sem assinatura so' Admin. O
+      // dado estatico guarda o evento cru — o booleano entra so' na resposta.
+      return json(
+        { ...criado, canEdit: session.role === 'admin' || criado.authorName === session.nickname },
+        201,
+      );
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/events\/([^/]+)$/,
+    handler: (_init, params) => {
+      const session = readSession();
+      if (!session) return unauthorized();
+
+      const evento = events.find((e) => e.id === params.id);
+      if (!evento) return fail(404, 'esse evento não existe (ou já sumiu)');
+
+      // Espelha a API: so' Admin ou quem assinou o evento pode editar.
+      const podeEditar =
+        session.role === 'admin' ||
+        (evento.authorName !== null && evento.authorName === session.nickname);
+      if (!podeEditar) return fail(403, 'só o criador ou um admin pode editar');
+
+      const { name, date, location } = parseBody<{
+        name?: string;
+        date?: string;
+        location?: string;
+      }>(_init);
+
+      if (!name?.trim() || name.trim().length < 3) return fail(400, 'conta pelo menos o que vai rolar');
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'data inválida');
+
+      evento.title = name.trim();
+      evento.date = date;
+      // Local vazio cai no padrao, igual a criacao.
+      evento.place = location?.trim() || 'local em segredo';
+
+      return json({ ...evento, canEdit: true });
     },
   },
   {

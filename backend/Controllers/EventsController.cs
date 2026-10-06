@@ -70,6 +70,45 @@ public class EventsController(IEventService eventService) : ControllerBase
     }
 
     /// <summary>
+    /// Edita os três campos mutáveis de um evento: <c>name</c>, <c>date</c> e
+    /// <c>location</c>. Horário, cor, descrição e assinatura não são editáveis
+    /// por aqui.
+    /// <para>
+    /// <b>Permissão:</b> só Admin ou o criador do evento (FK <c>CreatorId</c>,
+    /// nunca a assinatura <c>authorName</c>). A tela não replica a regra: o
+    /// booleano <c>canEdit</c> já vem resolvido em cada evento.
+    /// </para>
+    /// </summary>
+    /// <response code="200">Evento atualizado (corpo: <c>EventResponseDto</c>).</response>
+    /// <response code="400">Validação do body falhou.</response>
+    /// <response code="401">Token ausente/inválido.</response>
+    /// <response code="403">Autenticado, mas não é Admin nem o criador do evento.</response>
+    /// <response code="404">Evento inexistente.</response>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(EventResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EventResponseDto>> Update(Guid id, [FromBody] UpdateEventDto request)
+    {
+        try
+        {
+            var updated = await eventService.UpdateEventAsync(id, request);
+            return Ok(updated);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Autenticado, porém sem permissão (não é Admin nem o criador).
+            return Forbid();
+        }
+    }
+
+    /// <summary>
     /// Remove o evento. Sem dono para conferir: qualquer pessoa da cúpula pode
     /// desfixar. As presenças saem em cascata no banco.
     /// </summary>

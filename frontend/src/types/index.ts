@@ -317,6 +317,16 @@ export const eventSchema = z
      * de quem chamou, nunca expondo a lista de confirmados.
      */
     isGoing: z.boolean(),
+    /**
+     * Se VOCE pode editar este evento (nome, data e local).
+     *
+     * Vem resolvido pelo servidor para a tela nao ter que replicar a regra
+     * de acesso: true para Admin, ou para quem assinou o evento (authorName
+     * igual ao apelido do token). Como assinar e' opcional, um evento sem
+     * assinatura nao tem criador identificavel no registro — nesse caso so'
+     * Admin edita. E' o espelho de `canEdit` do EventResponseDto.
+     */
+    canEdit: z.boolean(),
   })
   .strict();
 
@@ -364,6 +374,29 @@ export const createEventSchema = z.object({
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+/**
+ * Campos editaveis de um evento ja' fixado (`PUT /api/events/{id}`).
+ *
+ * So' os tres mutaveis: `name`, `date` e `location`. Horario, cor, descricao
+ * e assinatura NAO entram — o contrato de edicao e' enxuto de proposito, e o
+ * servidor so' aceita a edicao de Admin ou de quem assinou o evento (quando
+ * `canEdit` do evento for true).
+ *
+ * Os nomes espelham o `UpdateEventDto` da API (`name`/`location` mapeiam para
+ * `title`/`place` no banco); por isso NAO sao os mesmos do `createEventSchema`.
+ */
+export const updateEventSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, 'conta pelo menos o que vai rolar')
+    .max(120, 'cabe em 120 caracteres'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  location: z.string().trim().max(120, 'o local cabe em 120 caracteres').default(''),
+});
+
+export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 
 /* ------------------------------ gossipficar ------------------------------ */
 

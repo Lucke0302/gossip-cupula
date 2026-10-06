@@ -197,7 +197,7 @@ de uso único enviado por e-mail.
 
 #### Contrato dos eventos (o calendário)
 
-A tela `/eventos` está **ligada na API**: as quatro rotas abaixo estão
+A tela `/eventos` está **ligada na API**: as cinco rotas abaixo estão
 implementadas (`Controllers/EventsController.cs` no backend) e
 `src/services/events.service.ts` não passa mais `source: 'mock'` — nenhuma tela
 mudou.
@@ -207,7 +207,7 @@ Todas exigem `[Authorize]`, como o resto dos dados.
 > **Estado no backend.** Modelo, migration e rotas prontos: as entidades
 > `Event` e `EventPresence` estão mapeadas no `AppDbContext`, a migration
 > `20261002174905_AddEvents` está **aplicada** no banco, os DTOs vivem em
-> `DTOs/Events/`, o `EventService` está registrado no DI e as quatro rotas em
+> `DTOs/Events/`, o `EventService` está registrado no DI e as cinco rotas em
 > `EventsController`. São duas tabelas:
 >
 > | tabela.coluna                       | tipo PostgreSQL               | origem no contrato                    |
@@ -242,6 +242,7 @@ Todas exigem `[Authorize]`, como o resto dos dados.
 | -------- | ---------------------- | --------------------------- | ----------------------------------------- |
 | `GET`    | `/events?month=YYYY-MM` | —                           | `{ items: Event[], nextCursor: null }`    |
 | `POST`   | `/events`              | `{ date, title, time, place, color, signed }` | `Event` (201)        |
+| `PUT`    | `/events/{id}`         | `{ name, date, location }`  | `Event` (200) — 403 se não for Admin/criador |
 | `DELETE` | `/events/{id}`         | —                           | `204`                                     |
 | `POST`   | `/events/{id}/going`   | —                           | `{ eventId, goingCount, isGoing }`        |
 
@@ -257,7 +258,8 @@ Todas exigem `[Authorize]`, como o resto dos dados.
   "color": "#E86B9E",          // uma das 5 cores do design
   "authorName": "marcella",     // null quando não assinou (o padrão)
   "goingCount": 31,            // agregado
-  "isGoing": false             // se QUEM PEDIU confirmou
+  "isGoing": false,            // se QUEM PEDIU confirmou
+  "canEdit": false             // se QUEM PEDIU pode editar (Admin ou o criador)
 }
 ```
 

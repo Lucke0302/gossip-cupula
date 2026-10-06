@@ -6,8 +6,14 @@ namespace GossipCupula.Api.Models;
 /// Espelha o <c>eventSchema</c> de <c>frontend/src/types/index.ts</c>. O contrato
 /// é <c>.strict()</c> do lado do front, então a serialização futura deve conter
 /// exatamente <c>id</c>, <c>date</c>, <c>title</c>, <c>time</c>, <c>place</c>,
-/// <c>description</c>, <c>color</c>, <c>authorName</c>, <c>goingCount</c> e
-/// <c>isGoing</c> — nada de <c>CreatedAt</c> saindo na resposta.
+/// <c>description</c>, <c>color</c>, <c>authorName</c>, <c>goingCount</c>,
+/// <c>isGoing</c> e <c>canEdit</c> — nada de <c>CreatedAt</c> nem
+/// <c>CreatorId</c> saindo na resposta.
+/// </para>
+/// <para>
+/// <b>Propriedade x assinatura:</b> <c>AuthorName</c> é só assinatura (opcional,
+/// texto de exibição); quem manda na permissão de edição é o vínculo real
+/// <c>CreatorId</c> → <c>Users</c>, que <b>nunca</b> é exposto no DTO.
 /// </para>
 /// </summary>
 public class Event
@@ -68,11 +74,37 @@ public class Event
     /// do <c>ownerUsername</c> dos posts.
     /// </para>
     /// <para>
-    /// É assinatura, não propriedade: não há dono para conferir, então qualquer
-    /// pessoa da cúpula pode desfixar o evento.
+    /// É assinatura, <b>não</b> propriedade: não identifica dono nenhum (por isso
+    /// a edição não usa este campo). O vínculo de autoria real é o
+    /// <see cref="CreatorId"/>. Desfixar (DELETE) continua aberto a qualquer
+    /// pessoa da cúpula.
     /// </para>
     /// </summary>
     public string? AuthorName { get; set; }
+
+    /// <summary>
+    /// Usuário que criou o evento (FK opcional para <c>Users</c>).
+    /// <para>
+    /// É o vínculo de <b>propriedade</b> de verdade — a base de
+    /// <c>canEdit</c> (Admin ou criador). É <b>opcional</b> por dois motivos:
+    /// eventos anteriores a esta coluna não têm dono, e excluir um usuário no
+    /// Admin <b>não</b> pode apagar o evento da cúpula (o vínculo vira
+    /// <c>NULL</c>, e o evento passa a ser editável só por Admin).
+    /// </para>
+    /// <para>
+    /// <b>Nunca serializado:</b> a identidade do criador é segredo só do backend.
+    /// O que atravessa o DTO é apenas o booleano derivado <c>canEdit</c> — nada
+    /// de <c>UserId</c> ou <c>CreatorId</c> na resposta.
+    /// </para>
+    /// </summary>
+    public Guid? CreatorId { get; set; }
+
+    /// <summary>
+    /// Navegação para o usuário criador. Sem coleção inversa em
+    /// <see cref="User"/> de propósito: nenhuma leitura precisa carregar "quais
+    /// eventos eu criei", e o vínculo nunca é exposto.
+    /// </summary>
+    public User? Creator { get; set; }
 
     /// <summary>
     /// Quem confirmou presença ("estou indo") neste evento.

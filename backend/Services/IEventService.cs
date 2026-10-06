@@ -34,6 +34,22 @@ public interface IEventService
     Task<EventResponseDto> CreateEventAsync(CreateEventRequestDto request);
 
     /// <summary>
+    /// Edita os três campos mutáveis de um evento existente (<c>name</c>,
+    /// <c>date</c> e <c>location</c>) e devolve o evento já atualizado, com
+    /// <c>canEdit</c> resolvido.
+    /// <para>
+    /// <b>Regra de acesso:</b> só Admin ou o criador (FK <c>CreatorId</c> igual ao
+    /// UserId do token) pode editar. Quando a checagem falha, lança
+    /// <see cref="UnauthorizedAccessException"/> (a controller traduz em 403).
+    /// </para>
+    /// <para>
+    /// Lança <see cref="KeyNotFoundException"/> quando o evento não existe (a
+    /// controller traduz em 404).
+    /// </para>
+    /// </summary>
+    Task<EventResponseDto> UpdateEventAsync(Guid eventId, UpdateEventDto request);
+
+    /// <summary>
     /// Alterna a presença do usuário logado: adiciona a confirmação quando ela
     /// não existe, remove quando existe. Devolve a contagem já atualizada e o
     /// estado de quem chamou.

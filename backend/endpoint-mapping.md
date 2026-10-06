@@ -392,6 +392,18 @@ Exige autenticação (`[Authorize]`), como o resto dos dados.
 > mas **nenhum `UserId` sai numa resposta**: o que trafega é o agregado
 > (`goingCount`) e o estado de quem pediu (`isGoing`), projetados na própria
 > consulta. Privacidade é a omissão na leitura, não a ausência no banco.
+>
+> **Edição (`canEdit`):** todo `EventResponseDto` carrega um booleano
+> `canEdit`, resolvido no servidor — **true** para Admin, ou para o **criador**
+> (FK `Events.CreatorId` == UserId do token). `authorName` é só assinatura de
+> exibição e **não** participa da permissão. É o sinal que a tela usa para
+> habilitar a edição de `name`/`date`/`location` sem replicar a regra de acesso
+> (veja `PUT /api/events/{id:guid}`).
+>
+> **`CreatorId` (privado):** a coluna `Events.CreatorId` (FK opcional para
+> `Users`, `ON DELETE SET NULL`) guarda quem criou o evento. Ela **nunca** sai
+> numa resposta — o único eco dela no JSON é o booleano `canEdit`. `NULL` em
+> evento antigo ou de usuário excluído ⇒ só Admin edita.
 
 ### `GET /api/events?month=YYYY-MM`
 
@@ -420,6 +432,29 @@ Exige autenticação (`[Authorize]`), como o resto dos dados.
   `"marcado anonimamente. quem sabe, sabe."` (ou a variante de assinado).
 - Quem fixa a estrelinha **já entra confirmado**: a resposta volta com
   `goingCount: 1` e `isGoing: true`.
+
+### `PUT /api/events/{id:guid}`
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | ✅ Sim |
+| Parâmetros | `id` — `Guid` (rota) |
+| Body (entrada) | `UpdateEventDto` — `name` (3–120, obrigatório), `date` (`YYYY-MM-DD`, obrigatório) e `location` (opcional, máx. 120) |
+| Resposta 200 | `EventResponseDto` atualizado |
+| Resposta 400 | Validação do body falhou (nome curto, data ausente/inválida, local longo) |
+| Resposta 401 | Token ausente/inválido |
+| Resposta 403 | Autenticado, mas não é Admin nem o criador do evento |
+| Resposta 404 | Evento inexistente |
+
+**Regras de negócio:**
+- Edita **só** os três mutáveis (`name`, `date`, `location`); `time`, `color`,
+  `description` e a assinatura não são tocados por esta rota.
+- `name`/`location` mapeiam para `Events.Title`/`Events.Place`; `location` vazio
+  cai no mesmo fallback da criação (`"local em segredo"`).
+- **Permissão:** só **Admin** ou o **criador** do evento (FK `Events.CreatorId`
+  == UserId do token). Nada de `authorName`: a assinatura é texto de exibição e
+  não dá direito de edição. `CreatorId` nulo (evento antigo ou de usuário
+  excluído) ⇒ só Admin edita.
 
 ### `DELETE /api/events/{id:guid}`
 

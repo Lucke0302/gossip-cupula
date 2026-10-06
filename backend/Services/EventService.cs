@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace GossipCupula.Api.Services;
 
 /// <summary>
-/// Eventos do calendário: criação, listagem por mês e toggle de presença.
+/// Eventos do calendário: criação, listagem por mês, edição, exclusão e toggle de presença.
 /// <para>
 /// <b>Regra de privacidade:</b> a tabela <c>EventPresences</c> guarda quem
 /// confirmou (é o que impede confirmação duplicada e o que permite responder
@@ -56,6 +56,7 @@ public class EventService(
                 @event.Description,
                 @event.Color,
                 @event.AuthorName,
+                @event.CreatorId,
                 GoingCount = @event.Presences.Count(),
                 IsGoing = @event.Presences.Any(presence => presence.UserId == currentUserId)
             })
@@ -76,7 +77,8 @@ public class EventService(
                 Color = row.Color,
                 AuthorName = row.AuthorName,
                 GoingCount = row.GoingCount,
-                IsGoing = row.IsGoing
+                IsGoing = row.IsGoing,
+                CanEdit = CanEditEvent(row.CreatorId)
             })
             .ToList();
 
@@ -130,6 +132,10 @@ public class EventService(
             // "gravar e esconder". E o nome sai do token (claim Name), nunca do
             // corpo do request: senão qualquer um assinaria como qualquer pessoa.
             AuthorName = signed ? GetCurrentUserName() : null,
+            // PROPRIEDADE, sim: o criador é o usuário do token, gravado como FK
+            // real. É este vínculo (nunca o AuthorName) que libera a edição.
+            // Fica só no banco: `canEdit` é o único eco disso no DTO.
+            CreatorId = currentUserId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -147,6 +153,44 @@ public class EventService(
         await dbContext.SaveChangesAsync();
 
         return ToResponseDto(newEvent, goingCount: 1, isGoing: true);
+    }
+
+    public async Task<EventResponseDto> UpdateEventAsync(Guid eventId, UpdateEventDto request)
+    {
+        var existingEvent = await dbContext.Events
+            .FirstOrDefaultAsync(@event => @event.Id == eventId);
+
+        if (existingEvent is null)
+        {
+            throw new KeyNotFoundException("Evento não encontrado.");
+        }
+
+        // Regra de acesso: só Admin ou o criador (FK `CreatorId`) pode editar.
+        // Eventos criados antes desta coluna e eventos de usuário já excluído
+        // têm `CreatorId` nulo — nesses casos só Admin edita.
+        if (!CanEditEvent(existingEvent.CreatorId))
+        {
+            throw new UnauthorizedAccessException(
+                "Apenas administradores ou o criador do evento podem editá-lo.");
+        }
+
+        // Só os três mutáveis. `Time`, `Color`, `Description` e a assinatura
+        // (`AuthorName`) não são tocados: não fazem parte do contrato de edição.
+        existingEvent.Title = request.Name.Trim();
+        existingEvent.Date = request.Date;
+        existingEvent.Place = ResolvePlace(request.Location);
+
+        await dbContext.SaveChangesAsync();
+
+        // A resposta é o mesmo `EventResponseDto` do resto: faltam só os dois
+        // agregados de presença, calculados aqui (o update não mexe em presenças).
+        var currentUserId = GetCurrentUserId();
+        var goingCount = await dbContext.EventPresences
+            .CountAsync(presence => presence.EventId == eventId);
+        var isGoing = await dbContext.EventPresences
+            .AnyAsync(presence => presence.EventId == eventId && presence.UserId == currentUserId);
+
+        return ToResponseDto(existingEvent, goingCount, isGoing);
     }
 
     public async Task<GoingResultDto> ToggleGoingAsync(Guid eventId)
@@ -219,10 +263,12 @@ public class EventService(
 
     /// <summary>
     /// Monta a resposta a partir da entidade já gravada. Usado na criação, onde
-    /// a contagem é conhecida sem ir ao banco (o criador é a única presença).
-    /// Não devolve nada do usuário além da assinatura opcional.
+    /// a contagem é conhecida sem ir ao banco (o criador é a única presença), e
+    /// na edição. Não devolve nada do usuário além da assinatura opcional — e do
+    /// booleano <c>canEdit</c>, resolvido a partir do <c>CreatorId</c> (que fica
+    /// só no banco).
     /// </summary>
-    private static EventResponseDto ToResponseDto(Event @event, int goingCount, bool isGoing) => new()
+    private EventResponseDto ToResponseDto(Event @event, int goingCount, bool isGoing) => new()
     {
         Id = @event.Id,
         Date = @event.Date.ToString(CreateEventRequestDto.DateFormat, CultureInfo.InvariantCulture),
@@ -233,8 +279,34 @@ public class EventService(
         Color = @event.Color,
         AuthorName = @event.AuthorName,
         GoingCount = goingCount,
-        IsGoing = isGoing
+        IsGoing = isGoing,
+        CanEdit = CanEditEvent(@event.CreatorId)
     };
+
+    /// <summary>
+    /// Se quem chamou pode editar um evento do criador informado. É a <b>única</b>
+    /// definição da regra de acesso — usada pela listagem, pela resposta de
+    /// criação e pelo <see cref="UpdateEventAsync"/> — para o <c>canEdit</c> da
+    /// tela nunca divergir do que o endpoint realmente permite.
+    /// <para>
+    /// Regra: Admin, ou o criador (FK <c>CreatorId</c> igual ao UserId do token).
+    /// <c>CreatorId</c> nulo (evento antigo ou de usuário excluído) não bate com
+    /// ninguém — só Admin edita.
+    /// </para>
+    /// </summary>
+    private bool CanEditEvent(Guid? creatorId) =>
+        IsCurrentUserAdmin()
+        || (creatorId is not null && creatorId == GetCurrentUserId());
+
+    /// <summary>
+    /// Role (claim Role) do token: <c>true</c> para "Admin". Mesma checagem do
+    /// <c>AdminController</c>, aqui só para resolver <c>canEdit</c>.
+    /// </summary>
+    private bool IsCurrentUserAdmin() =>
+        string.Equals(
+            httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Role),
+            "Admin",
+            StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Primeiro dia do mês pedido (<c>YYYY-MM</c>). O filtro é o intervalo

@@ -58,4 +58,21 @@ public class EventResponseDto
     /// <c>UserId</c> usado nessa conta nunca sai do serviço.
     /// </summary>
     public bool IsGoing { get; set; }
+
+    /// <summary>
+    /// Se <b>quem pediu</b> pode editar este evento (nome, data e local). É um
+    /// sinal de UI resolvido no servidor, para a tela não ter que replicar a
+    /// regra de acesso.
+    /// <para>
+    /// Regra atual: <c>true</c> para Admin, ou para o criador (FK
+    /// <c>Events.CreatorId</c> igual ao UserId do token). O <c>CreatorId</c> é
+    /// <b>opcional</b>: eventos anteriores à coluna e eventos de usuário já
+    /// excluído não têm criador — nesses só Admin edita.
+    /// </para>
+    /// <para>
+    /// <b>Nunca</b> expõe quem criou: o identificador do criador é segredo do
+    /// backend, e só o booleano derivado atravessa o DTO.
+    /// </para>
+    /// </summary>
+    public bool CanEdit { get; set; }
 }

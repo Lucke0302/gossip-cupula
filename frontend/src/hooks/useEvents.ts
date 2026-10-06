@@ -4,8 +4,15 @@ import {
   deleteEvent,
   listEvents,
   toggleGoing,
+  updateEvent,
 } from '../services/events.service';
-import type { CalendarEvent, CreateEventInput, GoingResult, Page } from '../types';
+import type {
+  CalendarEvent,
+  CreateEventInput,
+  GoingResult,
+  Page,
+  UpdateEventInput,
+} from '../types';
 
 const eventsKey = (month: string) => ['events', month] as const;
 
@@ -22,6 +29,24 @@ export function useCreateEvent(month: string) {
 
   return useMutation<CalendarEvent, Error, CreateEventInput>({
     mutationFn: createEvent,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: eventsKey(month) });
+    },
+  });
+}
+
+/**
+ * Editar nome, data e local.
+ *
+ * Sem otimismo: a edicao so' entra se o servidor permitir (canEdit), e um
+ * 403 precisa chegar pra tela — da' o invalidate para recarregar o estado
+ * real em caso de corrida.
+ */
+export function useUpdateEvent(month: string) {
+  const client = useQueryClient();
+
+  return useMutation<CalendarEvent, Error, { id: string; input: UpdateEventInput }>({
+    mutationFn: ({ id, input }) => updateEvent(id, input),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: eventsKey(month) });
     },

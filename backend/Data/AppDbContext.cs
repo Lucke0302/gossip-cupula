@@ -217,6 +217,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // (`e.Presences.Count()` e `e.Presences.Any(p => p.UserId == eu)`).
             // A relação é configurada em EventPresence.
 
+            // FK opcional: Event -> User (criador). É o vínculo real da
+            // permissão de edição (`canEdit` = Admin ou criador). `SetNull` no
+            // delete do usuário: o evento é da cúpula e sobrevive — só o vínculo
+            // de autoria some (e o evento passa a ser editável só por Admin).
+            // Nada disto é serializado: o DTO só carrega o booleano `canEdit`.
+            entity.HasOne(e => e.Creator)
+                  .WithMany()
+                  .HasForeignKey(e => e.CreatorId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
             // Sustenta a listagem por mês: WHERE Date >= @start AND Date < @end
             // ORDER BY Date.
             entity.HasIndex(e => e.Date);

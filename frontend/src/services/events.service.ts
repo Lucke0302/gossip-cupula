@@ -8,6 +8,7 @@ import {
   type CreateEventInput,
   type GoingResult,
   type Page,
+  type UpdateEventInput,
 } from '../types';
 
 /* ------------------------------------------------------------------ *
@@ -44,6 +45,21 @@ export function listEvents(month: string, signal?: AbortSignal): Promise<Page<Ca
 export function createEvent(input: CreateEventInput): Promise<CalendarEvent> {
   return request('/events', {
     method: 'POST',
+    body: input,
+    schema: eventSchema,
+  });
+}
+
+/**
+ * Edita nome, data e local de um evento existente.
+ *
+ * O servidor so' aceita quando o evento tem `canEdit: true` (Admin ou quem
+ * assinou); caso contrario responde 403. A resposta e' o `Event` inteiro, ja'
+ * com `canEdit` resolvido.
+ */
+export function updateEvent(id: string, input: UpdateEventInput): Promise<CalendarEvent> {
+  return request(`/events/${encodeURIComponent(id)}`, {
+    method: 'PUT',
     body: input,
     schema: eventSchema,
   });
