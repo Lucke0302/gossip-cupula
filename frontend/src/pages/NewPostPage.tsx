@@ -62,45 +62,82 @@ const ALLOWED_TYPES: readonly string[] = [
  * O `canvas` reencoda em JPEG, então PNG com transparência e GIF animado
  * chegam do outro lado como imagem estática. É o preço do anonimato.
  */
-function stripMetadata(file: File): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
+async function stripMetadata(file: File): Promise<File> {
+  const url = URL.createObjectURL(file);
+
+  try {
     const image = new Image();
-
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, MAX_IMAGE_PX / Math.max(image.width, image.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(image.width * scale));
-      canvas.height = Math.max(1, Math.round(image.height * scale));
-
-      const context = canvas.getContext('2d');
-      if (!context) {
-        reject(new Error('não deu pra processar a imagem'));
-        return;
-      }
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error('não deu pra processar a imagem'));
-            return;
-          }
-          resolve(new File([blob], 'babado.jpg', { type: 'image/jpeg' }));
-        },
-        'image/jpeg',
-        0.82,
-      );
-    };
-
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('arquivo de imagem inválido'));
-    };
-
     image.src = url;
-  });
+
+    /*
+     * `decode()` em vez de `onload`.
+     *
+     * `onload` avisa que os bytes chegaram, não que a imagem está
+     * decodificada e pronta pra ser desenhada. Em alguns navegadores
+     * (WebKit, principalmente) desenhar nesse intervalo pinta nada — e
+     * "nada" num canvas exportado como JPEG vira PRETO, porque JPEG não
+     * tem transparência.
+     */
+    await image.decode();
+
+    const scale = Math.min(1, MAX_IMAGE_PX / Math.max(image.width, image.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('não deu pra processar a imagem');
+
+    // Fundo branco antes de desenhar: PNG/GIF com transparência viram
+    // JPEG, e sem isso as áreas transparentes sairiam pretas.
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    /*
+     * Última linha de defesa: se TODO pixel amostrado for preto puro,
+     * o desenho falhou. Uma foto de verdade — mesmo tirada no escuro —
+     * não dá 0,0,0 em todos os pontos, ainda mais sobre fundo branco.
+     * Melhor recusar e avisar do que publicar um retângulo preto.
+     */
+    if (pareceVazia(context, canvas)) {
+      throw new Error('essa imagem não pôde ser processada. tenta de novo ou escolhe outra.');
+    }
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.82);
+    });
+    if (!blob) throw new Error('não deu pra processar a imagem');
+
+    return new File([blob], 'babado.jpg', { type: 'image/jpeg' });
+  } finally {
+    /*
+     * Revogar SÓ no fim.
+     *
+     * Antes isso acontecia logo na entrada do onload, antes do
+     * `drawImage` — e revogar a URL pode invalidar o bitmap que o
+     * `drawImage` ia usar. Era a causa das fotos pretas: dimensões
+     * certas, arquivo minúsculo, imagem 100% preta.
+     */
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Amostra alguns pixels e diz se o canvas ficou todo preto. */
+function pareceVazia(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement): boolean {
+  try {
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+    // De 4 em 4 bytes é um pixel; o passo primo evita cair sempre na
+    // mesma coluna e ler só uma faixa da imagem.
+    for (let i = 0; i < data.length; i += 4 * 1009) {
+      if ((data[i] ?? 0) > 0 || (data[i + 1] ?? 0) > 0 || (data[i + 2] ?? 0) > 0) return false;
+    }
+    return true;
+  } catch {
+    // Canvas "contaminado" por origem cruzada não deixa ler pixels.
+    // Não é o nosso caso (o arquivo é local), mas na dúvida deixa passar.
+    return false;
+  }
 }
 
 /** O que a tela guarda por foto: o arquivo limpo e a prévia na tela. */
